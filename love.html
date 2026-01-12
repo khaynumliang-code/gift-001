@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>告白倒计时-超级烟花版</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// --- 音频资源 ---
+const audioCtx = {
+    countdown: new Audio('https://actions.google.com/sounds/v1/clocks/ticks.ogg'),
+    launch: new Audio('https://actions.google.com/sounds/v1/weapons/firework_rocket_launch.ogg'),
+    explode: new Audio('https://actions.google.com/sounds/v1/explosions/clank_war_explosion.ogg')
+};
+
+audioCtx.launch.volume = 0.2;
+audioCtx.countdown.volume = 0.5;
+
+let width, height, particles = [];
+let fireworks = []; 
+let countdownNum = 10;
+const finalWaitText = "祝你生日快乐";
+let isFinal = false;
+
+const PARTICLE_COUNT = 2000; 
+
+function tryPlay(audio) {
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+        playPromise.catch(() => {});
+    }
+}
+
+function playExplodeSound() {
+    let sound = audioCtx.explode.cloneNode();
+    sound.volume = 0.3; // 调低一点点，因为烟花很多
+    const playPromise = sound.play();
+    if (playPromise !== undefined) playPromise.catch(() => {});
+}
+
+class Firework {
+    constructor() {
+        this.x = Math.random() * width;
+        this.y = height;
+        this.targetY = Math.random() * (height / 1.8); // 稍微飞高一点
+        this.vx = (Math.random() - 0.5) * 3;
+        this.vy = -(Math.random() * 4 + 7);
+        this.hue = Math.random() * 360;
+        this.exploded = false;
+        this.sparks = [];
+        
+        audioCtx.launch.currentTime = 0;
+        tryPlay(audioCtx.launch);
+    }
+    update() {
+        if (!this.exploded) {
+            this.x += this.vx;
+            this.y += this.vy;
+            if (this.vy >= 0 || this.y <= this.targetY) {
+                this.exploded = true;
+                this.explode();
+            }
+            this.vy += 0.12;
+        }
+        this.sparks.forEach((s, i) => {
+            s.x += s.vx;
+            s.y += s.vy;
+            s.vy += 0.06;
+            s.alpha -= 0.012; // 让火花消失得慢一点，更华丽
+            if (s.alpha <= 0) this.sparks.splice(i, 1);
+        });
+    }
+    explode() {
+        playExplodeSound();
+        // 增加爆炸粒子数量到 100
+        for (let i = 0; i < 100; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 6 + 2;
+            this.sparks.push({
+                x: this.x, y: this.y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                alpha: 1
+            });
+        }
+    }
+    draw() {
+        if (!this.exploded) {
+            ctx.fillStyle = `hsl(${this.hue}, 100%, 70%)`;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        this.sparks.forEach(s => {
+            ctx.fillStyle = `hsla(${this.hue}, 100%, 70%, ${s.alpha})`;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    }
+}
+
+function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+}
+
+function getPoints(text) {
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCanvas.width = width;
+    tempCanvas.height = height;
+    let fontSize = isFinal ? Math.min(width / 4, 160) : Math.min(width / 3, 220);
+    tempCtx.font = `bold ${fontSize}px "Microsoft YaHei", "SimHei", sans-serif`;
+    tempCtx.textAlign = "center";
+    tempCtx.textBaseline = "middle";
+    tempCtx.fillStyle = "white";
+    tempCtx.fillText(text, width / 2, height / 2);
+    const imageData = tempCtx.getImageData(0, 0, width, height).data;
+    const points = [];
+    const gap = isFinal ? 12 : 6; 
+    for (let y = 0; y < height; y += gap) {
+        for (let x = 0; x < width; x += gap) {
+            if (imageData[(y * width + x) * 4 + 3] > 128) {
+                points.push({ x, y });
+            }
+        }
+    }
+    return points;
+}
+
+function init() {
+    resize();
+    particles = [];
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            size: Math.random() * 2 + 1,
+            tx: width / 2,
+            ty: height / 2,
+            hue: 200, 
+            brightness: 70
+        });
+    }
+    startCountdown();
+}
+
+function startCountdown() {
+    if (countdownNum >= 1) {
+        isFinal = false;
+        const points = getPoints(countdownNum.toString());
+        updateParticleTargets(points, 190); 
+        audioCtx.countdown.currentTime = 0;
+        tryPlay(audioCtx.countdown);
+        countdownNum--;
+        setTimeout(startCountdown, 1000);
+    } else {
+        isFinal = true;
+        const points = getPoints(finalWaitText);
+        particles.forEach(p => {
+            p.x += (Math.random() - 0.5) * 600;
+            p.y += (Math.random() - 0.5) * 600;
+        });
+        updateParticleTargets(points, 45); 
+        
+        // --- 重点修改：提高烟花生成频率 ---
+        setInterval(() => {
+            // 允许同时存在 15 个烟花（原来是 8 个）
+            if (fireworks.length < 15) {
+                fireworks.push(new Firework());
+            }
+        }, 300); // 生成间隔缩短为 300ms（原来是 600ms）
+    }
+}
+
+function updateParticleTargets(points, hue) {
+    particles.forEach((p, i) => {
+        const target = points[i % points.length];
+        p.tx = target.x;
+        p.ty = target.y;
+        p.hue = hue;
+    });
+}
+
+function animate() {
+    // 稍微增加拖尾效果
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.15)'; 
+    ctx.fillRect(0, 0, width, height);
+
+    fireworks.forEach((fw, i) => {
+        fw.update();
+        fw.draw();
+        if (fw.exploded && fw.sparks.length === 0) fireworks.splice(i, 1);
+    });
+
+    for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.x += (p.tx - p.x) * 0.08;
+        p.y += (p.ty - p.y) * 0.08;
+        if (isFinal) {
+            const flicker = Math.random() > 0.98 ? 0.7 : 1; 
+            ctx.fillStyle = `hsla(${p.hue}, 100%, 50%, ${0.05 * flicker})`;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size * 6, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = `hsla(${p.hue}, 100%, 60%, ${0.2 * flicker})`;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size * 3, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = `hsla(${p.hue}, 100%, 90%, ${0.9 * flicker})`;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+        } else {
+            ctx.fillStyle = `hsla(${p.hue}, 80%, 70%, 0.6)`;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+        }
+    }
+    requestAnimationFrame(animate);
+}
+
+window.addEventListener('resize', () => {
+    resize();
+    const text = isFinal ? finalWaitText : (countdownNum + 1).toString();
+    const points = getPoints(text);
+    updateParticleTargets(points, isFinal ? 45 : 190);
+});
+
+init();
+animate();
+</script>
+</body>
+</html>
