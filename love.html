@@ -24,8 +24,8 @@
 
         @media screen and (max-width: 480px) {
             #book-container {
-                width: 320px;
-                height: 420px;
+                width: 300px;
+                height: 400px;
             }
         }
 
@@ -69,7 +69,6 @@
             pointer-events: none;
         }
 
-        /* 封面设计 */
         .cover {
             background: linear-gradient(145deg, #2c3e50, #000000);
             border: 3px solid #d4af37;
@@ -90,30 +89,43 @@
         
         .back { transform: rotateY(180deg); background-color: #eee; }
         
-        /* 核心修改：将翻页角度改为 -145deg */
-        .page.flipped { transform: rotateY(-145deg); }
+        /* 翻转角度 120度 */
+        .page.flipped { transform: rotateY(-120deg); }
 
+        /* --- 极大化设计后的提示文字 --- */
         #click-hint {
             position: absolute; 
-            bottom: -90px; 
-            width: 100%;
+            bottom: -130px; 
+            width: 100vw; /* 占据全屏宽度 */
+            left: 50%;
+            transform: translateX(-50%);
             text-align: center; 
             color: #fff; 
-            font-size: 20px; 
-            font-weight: bold;
-            letter-spacing: 3px;
-            text-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
-            animation: breathe 2.5s infinite;
+            font-size: 38px; /* 电脑端大小 */
+            font-weight: 900; /* 最粗字体 */
+            letter-spacing: 5px;
+            /* 强化发光效果 */
+            text-shadow: 
+                0 0 10px rgba(255, 255, 255, 1),
+                0 0 20px rgba(255, 255, 255, 0.8),
+                0 0 40px rgba(255, 255, 255, 0.6);
+            animation: breathe-ultra 2s infinite;
+            white-space: nowrap;
+            pointer-events: none;
         }
 
         @media screen and (max-width: 480px) {
             #click-hint {
-                font-size: 24px; 
-                bottom: -100px;
+                font-size: 45px; /* 手机端极致大小 */
+                bottom: -140px;
+                letter-spacing: 2px;
             }
         }
 
-        @keyframes breathe { 0%, 100% { opacity: 0.3; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1.05); } }
+        @keyframes breathe-ultra { 
+            0%, 100% { opacity: 0.3; transform: translateX(-50%) scale(0.85); } 
+            50% { opacity: 1; transform: translateX(-50%) scale(1.1); } 
+        }
     </style>
 </head>
 <body>
@@ -156,7 +168,7 @@
 </div>
 
 <script>
-// --- 1. 背景：二进制慢速代码雨 ---
+// --- 背景雨 logic ---
 const mCanvas = document.getElementById('matrixCanvas');
 const mCtx = mCanvas.getContext('2d');
 let mW, mH;
@@ -190,7 +202,7 @@ function drawMatrix(timestamp) {
     }
 }
 
-// --- 2. 文字粒子逻辑 ---
+// --- 粒子 logic ---
 const pCanvas = document.getElementById('particleCanvas');
 const pCtx = pCanvas.getContext('2d');
 let pW, pH, particles = [], countdownNum = 10;
