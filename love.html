@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>Mwe Sein - Vertical Flip</title>
+    <title>Mwe Sein - Vertical Interactive Book</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: "Segoe UI", sans-serif; -webkit-user-select: none; user-select: none; }
         canvas { display: block; position: absolute; top: 0; left: 0; }
@@ -18,7 +18,6 @@
 
         .book { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
         
-        /* 螺旋铁环改为顶部排列 */
         .spiral {
             position: absolute; top: -15px; left: 20px; width: calc(100% - 40px); height: 30px;
             display: flex; flex-direction: row; justify-content: space-around;
@@ -32,8 +31,8 @@
 
         .page {
             position: absolute; width: 100%; height: 100%; top: 0; left: 0;
-            /* 修改旋转轴为顶部 */
             transform-origin: top; transform-style: preserve-3d;
+            /* 默认带有丝滑过渡 */
             transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: grab;
         }
@@ -71,7 +70,6 @@
             pointer-events: none; -webkit-user-drag: none;
         }
         
-        /* 背面旋转改为沿X轴 */
         .back { transform: rotateX(-180deg); }
         .book.flipped-active .ring { transform: rotateX(-160deg); }
 
@@ -229,28 +227,30 @@ function initBookEvents() {
         page.querySelectorAll('img').forEach(img => { img.ondragstart = () => false; });
 
         const startHandler = (e) => {
-            isDragging = true; currentTargetPage = page;
+            isDragging = true; 
+            currentTargetPage = page;
             startY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-            page.style.transition = 'none';
+            // 按住时取消 CSS 动画，实现 1:1 跟随
+            page.style.transition = 'none'; 
         };
 
         const moveHandler = (e) => {
             if (!isDragging || currentTargetPage !== page) return;
             const currentY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-            const diff = currentY - startY; // 追踪 Y 轴
+            const diff = currentY - startY;
             
             if (!page.classList.contains('flipped')) {
                 if (diff < 0) {
-                    let angle = Math.max(-165, diff * 0.5);
+                    let angle = Math.max(-165, diff * 0.7); // 0.7 为拉动灵敏度
                     page.style.transform = `rotateX(${-angle}deg)`;
-                    if (angle < -90) page.style.zIndex = "0";
+                    if (angle < -85) page.style.zIndex = "0";
                     else page.style.zIndex = originalZ;
                 }
             } else {
                 if (diff > 0) {
-                    let angle = Math.min(0, -165 + diff * 0.5);
+                    let angle = Math.min(0, -165 + diff * 0.7);
                     page.style.transform = `rotateX(${-angle}deg)`;
-                    if (angle > -90) page.style.zIndex = originalZ;
+                    if (angle > -85) page.style.zIndex = originalZ;
                     else page.style.zIndex = "0";
                 }
             }
@@ -262,6 +262,7 @@ function initBookEvents() {
             const endY = e.type.includes('touch') ? (e.changedTouches ? e.changedTouches[0].clientY : startY) : e.clientY;
             const diff = endY - startY;
             
+            // 松手瞬间恢复 1.5s 慢动作吸附
             page.style.transition = 'transform 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
             
             if (Math.abs(diff) > 50 || Math.abs(diff) < 5) {
@@ -297,7 +298,7 @@ function flipPage(el, originalZ, shouldFlip) {
         el.classList.add('flipped');
         el.style.transform = 'rotateX(165deg)';
         if(el.id === 'p1') book.classList.add('flipped-active');
-        setTimeout(() => { if(el.classList.contains('flipped')) el.style.zIndex = "0"; }, 700);
+        setTimeout(() => { if(el.classList.contains('flipped')) el.style.zIndex = "0"; }, 750);
     } else {
         el.style.zIndex = originalZ;
         if(el.id === 'p1') book.classList.remove('flipped-active');
