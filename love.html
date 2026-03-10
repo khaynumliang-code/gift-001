@@ -36,9 +36,10 @@
             object-fit: contain;
             border-radius: 15px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-            pointer-events: none; 
+            pointer-events: none; /* 防止图片干扰拖拽 */
         }
 
+        /* 底部信息 */
         .info-overlay {
             position: absolute; bottom: 100px; left: 30px; color: white;
             text-shadow: 0 2px 5px rgba(0,0,0,0.8);
@@ -46,6 +47,7 @@
         }
         .info-overlay h3 { margin: 0; font-size: 28px; color: #42c8f5; }
 
+        /* 指示器 */
         .dots {
             position: absolute; bottom: 40px; width: 100%;
             display: flex; justify-content: center; gap: 10px;
@@ -82,13 +84,13 @@
 </div>
 
 <script>
+/* --- 烟花与粒子系统 (原逻辑保持) --- */
 const fwCanvas = document.getElementById('fwCanvas');
 const fwCtx = fwCanvas.getContext('2d');
 const pCanvas = document.getElementById('particleCanvas');
 const pCtx = pCanvas.getContext('2d');
 let fwW, fwH, fireworks = [];
 let particles = [], countdownNum = 3, hideParticles = false;
-// 这里的颜色可以根据喜好调整，推荐明亮的浅蓝色或粉紫色
 const BLUE_COLOR = "#42c8f5"; 
 
 function resize() { 
@@ -112,7 +114,7 @@ class FireworkParticle {
 
 function launchFirework() {
     const x = Math.random() * fwW, y = Math.random() * (fwH * 0.6);
-    const color = `hsl(${Math.random() * 360}, 100%, 75%)`;
+    const color = `hsl(${Math.random() * 360}, 100%, 65%)`;
     for (let i = 0; i < 40; i++) fireworks.push(new FireworkParticle(x, y, color));
 }
 
@@ -127,16 +129,14 @@ function getPoints(text) {
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
     tempCanvas.width = fwW; tempCanvas.height = fwH;
-    // 增加字体大小判定，让字更饱满
-    let fs = text.length > 15 ? Math.min(fwW/10, 60) : Math.min(fwW/6, 150);
-    tempCtx.font = `bold ${fs}px "Segoe UI", sans-serif`;
+    let fs = text.length > 15 ? Math.min(fwW/12, 50) : Math.min(fwW/5, 180);
+    tempCtx.font = `bold ${fs}px sans-serif`;
     tempCtx.textAlign = "center"; tempCtx.textBaseline = "middle";
     tempCtx.fillText(text, fwW/2, fwH/2);
     const data = tempCtx.getImageData(0, 0, fwW, fwH).data;
     const pts = [];
-    // 减小采样步长 (从 7 降到 5)，增加粒子密度
-    for (let y = 0; y < fwH; y += 5) {
-        for (let x = 0; x < fwW; x += 5) {
+    for (let y = 0; y < fwH; y += 7) {
+        for (let x = 0; x < fwW; x += 7) {
             if (data[(y * fwW + x) * 4 + 3] > 128) pts.push({x, y});
         }
     }
@@ -154,10 +154,10 @@ function runFlow() {
     if (countdownNum >= 1) {
         updateTargets(getPoints(countdownNum.toString()));
         countdownNum--; 
-        setTimeout(runFlow, 1000); // 稍微延长倒计时感官
+        setTimeout(runFlow, 800);
     } else {
         updateTargets(getPoints("Happy Birthday to You"));
-        const fwLaunch = setInterval(launchFirework, 150); 
+        const fwLaunch = setInterval(launchFirework, 120); 
         setTimeout(() => {
             clearInterval(fwLaunch);
             updateTargets(getPoints("Mwe Sein"));
@@ -170,19 +170,23 @@ function runFlow() {
                     setTimeout(() => container.style.opacity = '1', 50); 
                     initGallery(); 
                 }, 600);
-            }, 2000);
-        }, 3000);
+            }, 1800);
+        }, 2500);
     }
 }
 
+/* --- 核心滑动逻辑 --- */
 function initGallery() {
     const slider = document.getElementById('main-slider');
     const slides = document.querySelectorAll('.slide');
     const dotContainer = document.getElementById('dot-container');
     let currentIndex = 0;
     let isDragging = false;
-    let startX = 0, currentTranslate = 0, prevTranslate = 0;
+    let startX = 0;
+    let currentTranslate = 0;
+    let prevTranslate = 0;
 
+    // 创建指示点
     dotContainer.innerHTML = '';
     slides.forEach((_, i) => {
         const d = document.createElement('div');
@@ -208,6 +212,7 @@ function initGallery() {
         updateDots();
     }
 
+    // 触摸/鼠标开始
     function onStart(e) {
         isDragging = true;
         startX = e.type.includes('mouse') ? e.pageX : e.touches[0].clientX;
@@ -215,44 +220,51 @@ function initGallery() {
         prevTranslate = currentIndex * -window.innerWidth;
     }
 
+    // 触摸/鼠标移动
     function onMove(e) {
         if (!isDragging) return;
-        if (e.cancelable) e.preventDefault();
+        if (e.cancelable) e.preventDefault(); // 关键：阻止系统手势
+
         const currentX = e.type.includes('mouse') ? e.pageX : e.touches[0].clientX;
         const diff = currentX - startX;
         currentTranslate = prevTranslate + diff;
+
+        // 边缘阻力
+        if (currentIndex === 0 && diff > 0) currentTranslate = diff * 0.3;
+        if (currentIndex === slides.length - 1 && diff < 0) currentTranslate = prevTranslate + (diff * 0.3);
+
         setSliderPosition();
     }
 
+    // 触摸/鼠标结束
     function onEnd() {
         if (!isDragging) return;
         isDragging = false;
         const movedBy = currentTranslate - prevTranslate;
+
+        // 翻页判定：滑动超过屏幕 15% 宽度
         if (movedBy < -window.innerWidth * 0.15 && currentIndex < slides.length - 1) currentIndex++;
         else if (movedBy > window.innerWidth * 0.15 && currentIndex > 0) currentIndex--;
+
         setPositionByIndex();
     }
 
+    // 事件监听
     slider.addEventListener('touchstart', onStart, { passive: false });
     slider.addEventListener('touchmove', onMove, { passive: false });
     slider.addEventListener('touchend', onEnd);
+    
     slider.addEventListener('mousedown', onStart);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onEnd);
+
     window.addEventListener('resize', setPositionByIndex);
 }
 
+/* --- 粒子动画启动 --- */
 function initParticles() {
-    // 增加粒子数量到 3500 让字迹更厚实
-    for (let i = 0; i < 3500; i++) {
-        particles.push({ 
-            x: Math.random()*fwW, 
-            y: Math.random()*fwH, 
-            tx: fwW/2, 
-            ty: fwH/2, 
-            size: Math.random()*2 + 0.5,
-            color: BLUE_COLOR 
-        });
+    for (let i = 0; i < 2000; i++) {
+        particles.push({ x: Math.random()*fwW, y: Math.random()*fwH, tx: fwW/2, ty: fwH/2, size: Math.random()*2 + 1 });
     }
     runFlow();
 }
@@ -260,21 +272,10 @@ function initParticles() {
 function animateParticles() {
     if (!hideParticles) {
         pCtx.clearRect(0, 0, fwW, fwH);
-        // 关键：增加外发光效果
-        pCtx.shadowBlur = 10;
-        pCtx.shadowColor = BLUE_COLOR;
-
         particles.forEach(p => {
-            p.x += (p.tx - p.x) * 0.08; 
-            p.y += (p.ty - p.y) * 0.08;
-            pCtx.fillStyle = p.color;
-            pCtx.beginPath();
-            pCtx.arc(p.x, p.y, p.size, 0, Math.PI*2);
-            pCtx.fill();
+            p.x += (p.tx - p.x) * 0.09; p.y += (p.ty - p.y) * 0.09;
+            pCtx.fillStyle = BLUE_COLOR; pCtx.beginPath(); pCtx.arc(p.x, p.y, p.size, 0, Math.PI*2); pCtx.fill();
         });
-        
-        // 重置阴影防止影响后续绘制
-        pCtx.shadowBlur = 0;
     }
     requestAnimationFrame(animateParticles);
 }
