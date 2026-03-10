@@ -4,17 +4,18 @@
     <meta charset="UTF-8">
     <title>Mwe Sein - Vertical Interactive Book</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: "Segoe UI", sans-serif; -webkit-user-select: none; user-select: none; }
+        /* 增加 touch-action: none 防止移动端下拉刷新干扰翻页 */
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: "Segoe UI", sans-serif; -webkit-user-select: none; user-select: none; touch-action: none; }
         canvas { display: block; position: absolute; top: 0; left: 0; }
         #fwCanvas { z-index: 50; pointer-events: none; }
         #particleCanvas { z-index: 100; pointer-events: none; }
 
         #book-container {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            /* 宽度已调整为 650px */
             width: 650px; height: 580px; perspective: 3000px;
             display: none; opacity: 0; z-index: 200;
             transition: opacity 0.8s ease-in-out;
+            touch-action: none;
         }
 
         .book { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
@@ -27,14 +28,16 @@
         .ring {
             width: 10px; height: 35px; background: linear-gradient(to right, #444, #888, #444);
             border-radius: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
-            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .page {
             position: absolute; width: 100%; height: 100%; top: 0; left: 0;
             transform-origin: top; transform-style: preserve-3d;
-            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: grab;
+            /* 增加硬件加速 */
+            will-change: transform;
         }
         .page:active { cursor: grabbing; }
         
@@ -64,11 +67,10 @@
             background-repeat: repeat;
         }
 
-        /* 修复：二维码或图片不会拦截点击 */
-        .page-inner img, .qr-container { 
+        .page-inner img { 
             width: 90%; height: 90%; object-fit: contain; 
             border: 10px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.15); 
-            pointer-events: none; user-select: none; -webkit-user-drag: none;
+            pointer-events: none; -webkit-user-drag: none;
         }
         
         .back { transform: rotateX(-180deg); }
@@ -130,12 +132,12 @@
                 </div>
             </div>
         </div>
+        
     </div>
     <div id="click-hint">✦ စာအုပ်ကိုအောက်မှအပေါ်သို့ဆွဲဖွင့်ရန် ✦</div>
 </div>
 
 <script>
-// --- 烟花逻辑 ---
 const fwCanvas = document.getElementById('fwCanvas');
 const fwCtx = fwCanvas.getContext('2d');
 const pCanvas = document.getElementById('particleCanvas');
@@ -176,7 +178,6 @@ function animateFW() {
     fireworks.forEach((p, i) => { p.update(); p.draw(); if (p.alpha <= 0) fireworks.splice(i, 1); });
 }
 
-// --- 粒子文字逻辑 ---
 function getPoints(text) {
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
@@ -227,38 +228,41 @@ function runFlow() {
     }
 }
 
-// --- 翻书逻辑核心修复 ---
 function initBookEvents() {
-    const pages = Array.from(document.querySelectorAll('.page'));
+    const pages = document.querySelectorAll('.page');
     let isDragging = false, startY = 0, currentTargetPage = null;
 
-    pages.forEach((page, index) => {
-        const originalZ = 5 - index; 
+    pages.forEach(page => {
+        const originalZ = parseInt(window.getComputedStyle(page).zIndex); 
+        page.querySelectorAll('img').forEach(img => { img.ondragstart = () => false; });
 
         const startHandler = (e) => {
             isDragging = true; 
             currentTargetPage = page;
             startY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-            
-            // 只要点中，立马让当前页层级爆表，防止往回翻时点不动
-            page.style.zIndex = "1000";
             page.style.transition = 'none'; 
         };
 
         const moveHandler = (e) => {
             if (!isDragging || currentTargetPage !== page) return;
+            // 关键：阻止移动端默认行为
+            if (e.cancelable) e.preventDefault();
+
             const currentY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
             const diff = currentY - startY;
             
             if (!page.classList.contains('flipped')) {
                 if (diff < 0) {
-                    let angle = Math.max(-165, diff * 0.7);
+                    let angle = Math.max(-165, diff * 0.6);
                     page.style.transform = `rotateX(${-angle}deg)`;
+                    // 动态调整层级判定
+                    page.style.zIndex = (angle < -90) ? "0" : originalZ;
                 }
             } else {
                 if (diff > 0) {
-                    let angle = Math.min(0, -165 + diff * 0.7);
+                    let angle = Math.min(0, -165 + diff * 0.6);
                     page.style.transform = `rotateX(${-angle}deg)`;
+                    page.style.zIndex = (angle > -90) ? originalZ : "0";
                 }
             }
         };
@@ -269,63 +273,34 @@ function initBookEvents() {
             const endY = e.type.includes('touch') ? (e.changedTouches ? e.changedTouches[0].clientY : startY) : e.clientY;
             const diff = endY - startY;
             
-            page.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-            const threshold = 60;
+            page.style.transition = 'transform 0.8s cubic-bezier(0.2, 0, 0.2, 1)';
+            
+            const threshold = 60; // 优化灵敏度
 
             if (!page.classList.contains('flipped')) {
                 if (diff < -threshold) {
-                    page.classList.add('flipped');
-                    page.style.transform = 'rotateX(165deg)';
+                    flipPage(page, originalZ, true);
                 } else {
-                    page.style.transform = 'rotateX(0deg)';
+                    resetPage(page, originalZ);
                 }
             } else {
                 if (diff > threshold) {
-                    page.classList.remove('flipped');
-                    page.style.transform = 'rotateX(0deg)';
+                    flipPage(page, originalZ, false);
                 } else {
-                    page.style.transform = 'rotateX(165deg)';
+                    resetPage(page, originalZ);
                 }
             }
-
-            // 动画结束后重置层级
-            setTimeout(() => {
-                if (page.classList.contains('flipped')) {
-                    page.style.zIndex = "1";
-                } else {
-                    page.style.zIndex = originalZ;
-                }
-                if(page.id === 'p1') {
-                    const book = document.getElementById('main-book');
-                    if(page.classList.contains('flipped')) book.classList.add('flipped-active');
-                    else book.classList.remove('flipped-active');
-                }
-            }, 800);
-
-            // 点击判定
+            
             if (Math.abs(diff) < 10) {
-                const isF = page.classList.contains('flipped');
-                if(!isF) {
-                    page.classList.add('flipped');
-                    page.style.transform = 'rotateX(165deg)';
-                } else {
-                    page.classList.remove('flipped');
-                    page.style.transform = 'rotateX(0deg)';
-                }
-                setTimeout(() => {
-                    page.style.zIndex = page.classList.contains('flipped') ? "1" : originalZ;
-                    if(page.id === 'p1') {
-                        const book = document.getElementById('main-book');
-                        if(page.classList.contains('flipped')) book.classList.add('flipped-active');
-                        else book.classList.remove('flipped-active');
-                    }
-                }, 800);
+                const currentlyFlipped = page.classList.contains('flipped');
+                flipPage(page, originalZ, !currentlyFlipped);
             }
             currentTargetPage = null;
         };
 
         page.addEventListener('mousedown', startHandler);
-        page.addEventListener('touchstart', startHandler, {passive: true});
+        page.addEventListener('touchstart', startHandler, {passive: false});
+        // 绑定到 window 确保滑动过程中手指离开页面元素也能响应
         window.addEventListener('mousemove', moveHandler);
         window.addEventListener('touchmove', moveHandler, {passive: false});
         window.addEventListener('mouseup', endHandler);
@@ -333,7 +308,30 @@ function initBookEvents() {
     });
 }
 
-// --- 初始化粒子 ---
+function resetPage(el, originalZ) { 
+    const isFlipped = el.classList.contains('flipped');
+    el.style.transform = isFlipped ? 'rotateX(165deg)' : 'rotateX(0deg)'; 
+    el.style.zIndex = isFlipped ? "0" : originalZ;
+}
+
+function flipPage(el, originalZ, shouldFlip) {
+    const book = document.getElementById('main-book');
+    const hint = document.getElementById('click-hint');
+    if(hint) hint.style.display = 'none';
+    if (shouldFlip) {
+        el.classList.add('flipped');
+        el.style.transform = 'rotateX(165deg)';
+        if(el.id === 'p1') book.classList.add('flipped-active');
+        // 缩短延时，确保逻辑连贯
+        setTimeout(() => { if(el.classList.contains('flipped')) el.style.zIndex = "0"; }, 400);
+    } else {
+        el.style.zIndex = originalZ; // 返回时立刻恢复层级，防止被盖住
+        if(el.id === 'p1') book.classList.remove('flipped-active');
+        el.classList.remove('flipped');
+        el.style.transform = 'rotateX(0deg)';
+    }
+}
+
 function initParticles() {
     for (let i = 0; i < 2000; i++) {
         particles.push({ x: Math.random()*fwW, y: Math.random()*fwH, tx: fwW/2, ty: fwH/2, size: Math.random()*2 + 1 });
