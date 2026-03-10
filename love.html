@@ -2,11 +2,10 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>Mwe Sein - Fast & Vivid Birthday</title>
+    <title>Mwe Sein - Smooth Flip Fixed</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: "Segoe UI", sans-serif; -webkit-user-select: none; user-select: none; }
         canvas { display: block; position: absolute; top: 0; left: 0; }
-        
         #fwCanvas { z-index: 50; pointer-events: none; }
         #particleCanvas { z-index: 100; pointer-events: none; }
 
@@ -14,7 +13,6 @@
             position: absolute; top: 50%; left: 70%; transform: translate(-50%, -50%);
             width: 400px; height: 520px; perspective: 2500px;
             display: none; opacity: 0; z-index: 200;
-            /* 加快书本显现速度：从 2s 改为 0.8s */
             transition: opacity 0.8s ease-in-out;
         }
 
@@ -66,8 +64,7 @@
         .page-inner img { 
             width: 85%; height: 85%; object-fit: cover; 
             border: 10px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.15); 
-            pointer-events: none; 
-            -webkit-user-drag: none;
+            pointer-events: none; -webkit-user-drag: none;
         }
         
         .back { transform: rotateY(180deg); }
@@ -135,7 +132,7 @@ const pCanvas = document.getElementById('particleCanvas');
 const pCtx = pCanvas.getContext('2d');
 let fwW, fwH, fireworks = [];
 let particles = [], countdownNum = 3, hideParticles = false;
-let currentTextColor = "#42c8f5"; // 默认蓝色
+const BLUE_COLOR = "#42c8f5"; 
 
 function resize() { 
     fwW = fwCanvas.width = pCanvas.width = window.innerWidth; 
@@ -169,23 +166,18 @@ function animateFW() {
     fireworks.forEach((p, i) => { p.update(); p.draw(); if (p.alpha <= 0) fireworks.splice(i, 1); });
 }
 
-function getPoints(text, isLarge = false) {
+function getPoints(text) {
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
     tempCanvas.width = fwW; tempCanvas.height = fwH;
-    
-    // 增加 Happy Birthday 的字号使其更明显
-    let fontSize = isLarge ? Math.min(fwW/7, 120) : Math.min(fwW/5, 180);
-    tempCtx.font = `bold ${fontSize}px sans-serif`;
+    let fs = text.length > 15 ? Math.min(fwW/12, 50) : Math.min(fwW/5, 180);
+    tempCtx.font = `bold ${fs}px sans-serif`;
     tempCtx.textAlign = "center"; tempCtx.textBaseline = "middle";
     tempCtx.fillText(text, fwW/2, fwH/2);
-    
     const data = tempCtx.getImageData(0, 0, fwW, fwH).data;
     const pts = [];
-    // 减小采样间隔（从7改为5），让字体更密集更明显
-    const step = isLarge ? 5 : 7;
-    for (let y = 0; y < fwH; y += step) {
-        for (let x = 0; x < fwW; x += step) {
+    for (let y = 0; y < fwH; y += 7) {
+        for (let x = 0; x < fwW; x += 7) {
             if (data[(y * fwW + x) * 4 + 3] > 128) pts.push({x, y});
         }
     }
@@ -201,36 +193,26 @@ function updateTargets(pts) {
 
 function runFlow() {
     if (countdownNum >= 1) {
-        currentTextColor = "#42c8f5"; 
         updateTargets(getPoints(countdownNum.toString()));
         countdownNum--; 
-        setTimeout(runFlow, 800); // 加快倒计时切换 (1000ms -> 800ms)
+        setTimeout(runFlow, 800);
     } else {
-        // 让 Happy Birthday to You 变成醒目的金黄色
-        currentTextColor = "#ffeb3b"; 
-        updateTargets(getPoints("Happy Birthday to You", true));
-        
-        const fwLaunch = setInterval(launchFirework, 100); // 加快烟花频率
-        
+        updateTargets(getPoints("Happy Birthday to You"));
+        const fwLaunch = setInterval(launchFirework, 120); 
         setTimeout(() => {
             clearInterval(fwLaunch);
-            currentTextColor = "#42c8f5"; 
             updateTargets(getPoints("Mwe Sein"));
-            
             setTimeout(() => {
-                // 粒子向上飞出的速度加倍
                 particles.forEach(p => p.ty = -fwH);
-                
                 setTimeout(() => { 
                     hideParticles = true; 
                     const container = document.getElementById('book-container');
                     container.style.display = 'block'; 
-                    // 几乎立刻显现书本
                     setTimeout(() => container.style.opacity = '1', 50); 
                     initBookEvents(); 
-                }, 600); // 缩短等待时间 (1200ms -> 600ms)
-            }, 1800); // 名字停留时间缩短 (2500ms -> 1800ms)
-        }, 2500); // 生日快乐停留时间 (3000ms -> 2500ms)
+                }, 600);
+            }, 1800);
+        }, 2500);
     }
 }
 
@@ -252,10 +234,23 @@ function initBookEvents() {
             if (!isDragging || currentTargetPage !== page) return;
             const currentX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
             const diff = currentX - startX;
+            
             if (!page.classList.contains('flipped')) {
-                if (diff < 0) page.style.transform = `rotateY(${Math.max(-155, diff * 0.8)}deg)`;
+                if (diff < 0) {
+                    let angle = Math.max(-155, diff * 0.7);
+                    page.style.transform = `rotateY(${angle}deg)`;
+                    // 修正：向左翻动到一定角度时降低层级
+                    if (angle < -90) page.style.zIndex = "0";
+                    else page.style.zIndex = originalZ;
+                }
             } else {
-                if (diff > 0) page.style.transform = `rotateY(${Math.min(0, -155 + diff * 0.8)}deg)`;
+                if (diff > 0) {
+                    let angle = Math.min(0, -155 + diff * 0.7);
+                    page.style.transform = `rotateY(${angle}deg)`;
+                    // 核心修复：返回翻页时，只要角度大于 -90 度，立即恢复高层级
+                    if (angle > -90) page.style.zIndex = originalZ;
+                    else page.style.zIndex = "0";
+                }
             }
         };
 
@@ -265,13 +260,14 @@ function initBookEvents() {
             const endX = e.type.includes('touch') ? (e.changedTouches ? e.changedTouches[0].clientX : startX) : e.clientX;
             const diff = endX - startX;
             page.style.transition = 'transform 0.8s cubic-bezier(0.645, 0.045, 0.355, 1)';
+            
             if (Math.abs(diff) > 50 || Math.abs(diff) < 5) {
                 if ((diff < -50 || Math.abs(diff) < 5) && !page.classList.contains('flipped')) {
                     flipPage(page, originalZ, true);
                 } else if ((diff > 50 || Math.abs(diff) < 5) && page.classList.contains('flipped')) {
                     flipPage(page, originalZ, false);
-                } else { resetPage(page); }
-            } else { resetPage(page); }
+                } else { resetPage(page, originalZ); }
+            } else { resetPage(page, originalZ); }
             currentTargetPage = null;
         };
 
@@ -284,7 +280,11 @@ function initBookEvents() {
     });
 }
 
-function resetPage(el) { el.style.transform = el.classList.contains('flipped') ? 'rotateY(-155deg)' : 'rotateY(0deg)'; }
+function resetPage(el, originalZ) { 
+    const isFlipped = el.classList.contains('flipped');
+    el.style.transform = isFlipped ? 'rotateY(-155deg)' : 'rotateY(0deg)'; 
+    el.style.zIndex = isFlipped ? "0" : originalZ;
+}
 
 function flipPage(el, originalZ, shouldFlip) {
     const book = document.getElementById('main-book');
@@ -294,8 +294,10 @@ function flipPage(el, originalZ, shouldFlip) {
         el.classList.add('flipped');
         el.style.transform = 'rotateY(-155deg)';
         if(el.id === 'p1') book.classList.add('flipped-active');
+        // 翻过去后设为低层级
         setTimeout(() => { if(el.classList.contains('flipped')) el.style.zIndex = "0"; }, 400);
     } else {
+        // 返回时恢复层级
         el.style.zIndex = originalZ;
         if(el.id === 'p1') book.classList.remove('flipped-active');
         el.classList.remove('flipped');
@@ -304,7 +306,7 @@ function flipPage(el, originalZ, shouldFlip) {
 }
 
 function initParticles() {
-    for (let i = 0; i < 2500; i++) { // 增加粒子数量让文字更厚实
+    for (let i = 0; i < 2000; i++) {
         particles.push({ x: Math.random()*fwW, y: Math.random()*fwH, tx: fwW/2, ty: fwH/2, size: Math.random()*2 + 1 });
     }
     runFlow();
@@ -314,10 +316,8 @@ function animateParticles() {
     if (!hideParticles) {
         pCtx.clearRect(0, 0, fwW, fwH);
         particles.forEach(p => {
-            p.x += (p.tx - p.x) * 0.1; // 稍微加快粒子聚拢速度
-            p.y += (p.ty - p.y) * 0.1;
-            pCtx.fillStyle = currentTextColor; 
-            pCtx.beginPath(); pCtx.arc(p.x, p.y, p.size, 0, Math.PI*2); pCtx.fill();
+            p.x += (p.tx - p.x) * 0.09; p.y += (p.ty - p.y) * 0.09;
+            pCtx.fillStyle = BLUE_COLOR; pCtx.beginPath(); pCtx.arc(p.x, p.y, p.size, 0, Math.PI*2); pCtx.fill();
         });
     }
     requestAnimationFrame(animateParticles);
