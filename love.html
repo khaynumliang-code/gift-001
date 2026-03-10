@@ -11,7 +11,8 @@
 
         #book-container {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 450px; height: 580px; perspective: 2500px;
+            /* 宽度从 450px 增加到 650px */
+            width: 650px; height: 580px; perspective: 3000px;
             display: none; opacity: 0; z-index: 200;
             transition: opacity 0.8s ease-in-out;
         }
@@ -23,6 +24,7 @@
             display: flex; flex-direction: row; justify-content: space-around;
             z-index: 10; pointer-events: none; transform-style: preserve-3d;
         }
+        /* 这里的圈圈会自动平铺 */
         .ring {
             width: 10px; height: 35px; background: linear-gradient(to right, #444, #888, #444);
             border-radius: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
@@ -53,7 +55,7 @@
         }
         
         .cover-title { text-align: center; color: #3a2b1a; pointer-events: none; }
-        .cover-title h1 { font-size: 42px; margin: 0; font-family: "Georgia", serif; }
+        .cover-title h1 { font-size: 52px; margin: 0; font-family: "Georgia", serif; }
 
         .page-inner { 
             background-color: #fffef0; 
@@ -64,7 +66,7 @@
         }
 
         .page-inner img { 
-            width: 85%; height: 85%; object-fit: cover; 
+            width: 90%; height: 90%; object-fit: contain; 
             border: 10px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.15); 
             pointer-events: none; -webkit-user-drag: none;
         }
@@ -95,6 +97,7 @@
         <div class="ring"></div><div class="ring"></div><div class="ring"></div>
         <div class="ring"></div><div class="ring"></div><div class="ring"></div>
         <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+        <div class="ring"></div><div class="ring"></div><div class="ring"></div>
     </div>
 
     <div class="book" id="main-book">
@@ -117,8 +120,8 @@
             <div class="side page-inner"><img src="mwe4.jpg" alt="Photo 4"></div>
             <div class="side back cover" style="border: none;">
                 <div style="text-align:center; color: #3a2b1a; padding: 20px;">
-                    <h2 style="font-size: 28px;">Happy Birthday</h2>
-                    <p>Wishing you a<br>wonderful day!</p>
+                    <h2 style="font-size: 36px;">Happy Birthday</h2>
+                    <p style="font-size: 18px;">Wishing you a<br>wonderful day!</p>
                 </div>
             </div>
         </div>
@@ -262,28 +265,22 @@ function initBookEvents() {
             
             page.style.transition = 'transform 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
             
-            // 设定翻页阈值：拉动位移必须超过 80 像素才触发翻页
-            const threshold = 80;
+            const threshold = 100; // 调宽了书，阈值稍微调高一点更有质感
 
             if (!page.classList.contains('flipped')) {
-                // 向上拉（diff为负）且位移够大才翻页
                 if (diff < -threshold) {
                     flipPage(page, originalZ, true);
                 } else {
-                    // 否则弹回
                     resetPage(page, originalZ);
                 }
             } else {
-                // 已翻开状态，向下拉（diff为正）且位移够大才合上
                 if (diff > threshold) {
                     flipPage(page, originalZ, false);
                 } else {
-                    // 否则弹回翻开状态
                     resetPage(page, originalZ);
                 }
             }
             
-            // 如果只是轻微点一下（位移小于 10 像素），则执行默认翻页切换
             if (Math.abs(diff) < 10) {
                 const currentlyFlipped = page.classList.contains('flipped');
                 flipPage(page, originalZ, !currentlyFlipped);
@@ -346,4 +343,3 @@ resize(); initParticles(); animateFW(); animateParticles();
 </script>
 </body>
 </html>
-
