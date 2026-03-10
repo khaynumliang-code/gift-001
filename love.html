@@ -2,69 +2,68 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>Mwe Sein - Ultra Smooth Version</title>
+    <title>Mwe Sein - Blue Theme with Fireworks</title>
     <style>
+        /* 背景保持纯黑 */
         body { margin: 0; overflow: hidden; background-color: #000; font-family: "Segoe UI", sans-serif; }
         canvas { display: block; position: absolute; top: 0; left: 0; }
         
+        /* 层级调整：烟花在粒子后面 */
         #fwCanvas { z-index: 50; pointer-events: none; }
         #particleCanvas { z-index: 100; pointer-events: none; }
 
         #book-container {
             position: absolute;
             top: 50%;
-            left: 70%; /* 锁定手机端靠右位置 */
+            left: 70%; 
             transform: translate(-50%, -50%);
             width: 400px;
             height: 520px;
             perspective: 2500px;
-            
-            /* 关键改进：不使用 display:none，改用 visibility 和 opacity */
-            visibility: hidden; 
-            opacity: 0;    
+            display: none; /* 初始隐藏 */
+            opacity: 0;    /* 初始透明 */
             z-index: 200;
-            
-            /* 增加平稳过渡效果 */
-            transition: opacity 2s ease-in-out, visibility 2s;
-            will-change: opacity;
-        }
-
-        /* 当增加 .active 类时，书本顺滑出现 */
-        #book-container.active {
-            visibility: visible;
-            opacity: 1;
+            transition: opacity 2s ease-in-out; /* 2秒淡入，防止跳变 */
         }
 
         .book { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
+
         .spiral {
             position: absolute; left: -15px; top: 20px; width: 30px; height: calc(100% - 40px);
             display: flex; flex-direction: column; justify-content: space-around;
             z-index: 10; pointer-events: none; transform-style: preserve-3d;
         }
+
         .ring {
             width: 35px; height: 10px; background: linear-gradient(to bottom, #444, #888, #444);
             border-radius: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
             transition: transform 1.6s cubic-bezier(0.645, 0.045, 0.355, 1);
         }
+
         .page {
             position: absolute; width: 100%; height: 100%; top: 0; left: 0;
             transform-origin: left; transform-style: preserve-3d;
             transition: transform 1.6s cubic-bezier(0.645, 0.045, 0.355, 1);
             cursor: pointer;
         }
+
         .side {
             position: absolute; width: 100%; height: 100%; backface-visibility: hidden;
             border-radius: 5px 15px 15px 5px; display: flex; align-items: center; justify-content: center; overflow: hidden;
         }
+
         .cover {
             background-color: #a68a64;
             background-image: radial-gradient(rgba(0,0,0,0.05) 1px, transparent 1px);
             background-size: 3px 3px; border-left: 20px solid rgba(0,0,0,0.1);
         }
+        
         .cover-title { text-align: center; padding: 20px; color: #4a3721; }
         .cover-title h1 { font-size: 42px; margin: 0; font-family: "Georgia", serif; opacity: 0.8; }
+
         .page-inner { background: #fff; box-shadow: inset 20px 0 50px rgba(0,0,0,0.05); }
         .page-inner img { width: 85%; height: 85%; object-fit: cover; border: 10px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        
         .back { transform: rotateY(180deg); background-color: #f5f5f5; }
         .page.flipped { transform: rotateY(-155deg); }
         .book.flipped-active .ring { transform: rotateY(-155deg); }
@@ -90,7 +89,7 @@
 <div id="book-container">
     <div class="spiral" id="spiral-rings">
         <div class="ring"></div><div class="ring"></div><div class="ring"></div>
-        <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+        <div class="ring"></div><div class="ring ="></div><div class="ring"></div>
         <div class="ring"></div><div class="ring"></div><div class="ring"></div>
         <div class="ring"></div><div class="ring"></div><div class="ring"></div>
     </div>
@@ -127,7 +126,7 @@
 </div>
 
 <script>
-// --- Fireworks Logic ---
+// --- Enhanced Fireworks ---
 const fwCanvas = document.getElementById('fwCanvas');
 const fwCtx = fwCanvas.getContext('2d');
 let fwW, fwH, fireworks = [];
@@ -163,7 +162,7 @@ function animateFW() {
     });
 }
 
-// --- Blue Particles Logic ---
+// --- Blue Particles ---
 const pCanvas = document.getElementById('particleCanvas');
 const pCtx = pCanvas.getContext('2d');
 let pW, pH, particles = [], countdownNum = 3; 
@@ -214,17 +213,17 @@ function runFlow() {
     }
 }
 
-// --- 极致平滑显示函数 ---
 function showBook() {
-    // 蓝色粒子飞散
     particles.forEach(p => { p.ty = -pH; });
     setTimeout(() => { hideParticles = true; }, 1500);
 
     const bc = document.getElementById('book-container');
-    
-    // 直接添加 active 类，书本会在 70% 的位置原地淡入
-    // 因为它一直都在那里，只是之前透明度是 0
-    bc.classList.add('active');
+    // 强制触发重绘显示逻辑
+    bc.style.display = 'block';
+    // 异步改变透明度，确保动画生效
+    setTimeout(() => {
+        bc.style.opacity = '1';
+    }, 100);
 }
 
 function flip(el, z) {
@@ -245,7 +244,13 @@ function flip(el, z) {
 
 function initParticles() {
     for (let i = 0; i < 2000; i++) {
-        particles.push({ x: Math.random()*pW, y: Math.random()*pH, tx: pW/2, ty: pH/2, size: Math.random()*2 + 1 });
+        particles.push({ 
+            x: Math.random()*pW, 
+            y: Math.random()*pH, 
+            tx: pW/2, 
+            ty: pH/2, 
+            size: Math.random()*2 + 1 
+        });
     }
     runFlow();
 }
@@ -265,6 +270,7 @@ function animateParticles() {
     requestAnimationFrame(animateParticles);
 }
 
+// 启动
 initParticles(); resizeFW(); resizeP();
 animateFW(); animateParticles();
 </script>
