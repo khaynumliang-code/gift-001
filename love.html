@@ -2,124 +2,77 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>Mwe Sein - Special Gift</title>
+    <title>Mwe Sein - Blue Theme with Fireworks</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: "Microsoft YaHei", sans-serif; }
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: "Segoe UI", sans-serif; }
         canvas { display: block; position: absolute; top: 0; left: 0; }
         
-        /* 书本容器 */
+        /* Layer positioning */
+        #matrixCanvas { z-index: 1; }
+        #fwCanvas { z-index: 50; pointer-events: none; } /* Fireworks ကို အရှေ့ကို ပိုထုတ်ထားပါတယ် */
+        #particleCanvas { z-index: 100; pointer-events: none; }
+
         #book-container {
             position: absolute;
             top: 50%;
-            left: 50%;
+            left: 70%; 
             transform: translate(-50%, -50%);
-            width: 380px;
-            height: 480px;
+            width: 400px;
+            height: 520px;
             perspective: 2500px;
             display: none;
             opacity: 0;
             transition: opacity 2s ease-in-out;
-            z-index: 100;
+            z-index: 200;
         }
 
-        @media screen and (max-width: 480px) {
-            #book-container {
-                width: 300px;
-                height: 400px;
-            }
+        .book { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
+
+        .spiral {
+            position: absolute; left: -15px; top: 20px; width: 30px; height: calc(100% - 40px);
+            display: flex; flex-direction: column; justify-content: space-around;
+            z-index: 10; pointer-events: none; transform-style: preserve-3d;
         }
 
-        .book {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            transform-style: preserve-3d;
+        .ring {
+            width: 35px; height: 10px; background: linear-gradient(to bottom, #444, #888, #444);
+            border-radius: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+            transition: transform 1.6s cubic-bezier(0.645, 0.045, 0.355, 1);
         }
 
         .page {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            transform-origin: left;
-            transform-style: preserve-3d;
-            transition: transform 1.4s cubic-bezier(0.645, 0.045, 0.355, 1);
+            position: absolute; width: 100%; height: 100%; top: 0; left: 0;
+            transform-origin: left; transform-style: preserve-3d;
+            transition: transform 1.6s cubic-bezier(0.645, 0.045, 0.355, 1);
             cursor: pointer;
         }
 
         .side {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            backface-visibility: hidden;
-            border-radius: 0 20px 20px 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            box-shadow: inset 10px 0 30px rgba(0,0,0,0.2), 5px 5px 30px rgba(0,0,0,0.5);
-        }
-
-        .side::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(to right, rgba(0,0,0,0.2) 0%, rgba(255,255,255,0) 20%, rgba(255,255,255,0) 80%, rgba(0,0,0,0.1) 100%);
-            pointer-events: none;
+            position: absolute; width: 100%; height: 100%; backface-visibility: hidden;
+            border-radius: 5px 15px 15px 5px; display: flex; align-items: center; justify-content: center; overflow: hidden;
         }
 
         .cover {
-            background: linear-gradient(145deg, #2c3e50, #000000);
-            border: 3px solid #d4af37;
-            color: #d4af37;
-            box-sizing: border-box;
+            background-color: #a68a64;
+            background-image: radial-gradient(rgba(0,0,0,0.05) 1px, transparent 1px);
+            background-size: 3px 3px; border-left: 20px solid rgba(0,0,0,0.1);
         }
         
-        .cover-title {
-            text-align: center;
-            border: 2px double #d4af37;
-            padding: 30px 20px;
-            margin: 20px;
-            background: rgba(0,0,0,0.3);
-        }
+        .cover-title { text-align: center; padding: 20px; color: #4a3721; }
+        .cover-title h1 { font-size: 42px; margin: 0; font-family: "Georgia", serif; opacity: 0.8; }
 
-        .page-inner { background-color: #fcfcfc; }
-        .page-inner img { width: 100%; height: 100%; object-fit: cover; }
+        .page-inner { background: #fff; box-shadow: inset 20px 0 50px rgba(0,0,0,0.05); }
+        .page-inner img { width: 85%; height: 85%; object-fit: cover; border: 10px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         
-        .back { transform: rotateY(180deg); background-color: #eee; }
-        
-        /* 翻转角度 120度 */
-        .page.flipped { transform: rotateY(-120deg); }
+        .back { transform: rotateY(180deg); background-color: #f5f5f5; }
+        .page.flipped { transform: rotateY(-155deg); }
+        .book.flipped-active .ring { transform: rotateY(-155deg); }
 
-        /* --- 极大化设计后的提示文字 --- */
         #click-hint {
-            position: absolute; 
-            bottom: -130px; 
-            width: 100vw; /* 占据全屏宽度 */
-            left: 50%;
-            transform: translateX(-50%);
-            text-align: center; 
-            color: #fff; 
-            font-size: 38px; /* 电脑端大小 */
-            font-weight: 900; /* 最粗字体 */
-            letter-spacing: 5px;
-            /* 强化发光效果 */
-            text-shadow: 
-                0 0 10px rgba(255, 255, 255, 1),
-                0 0 20px rgba(255, 255, 255, 0.8),
-                0 0 40px rgba(255, 255, 255, 0.6);
-            animation: breathe-ultra 2s infinite;
-            white-space: nowrap;
-            pointer-events: none;
-        }
-
-        @media screen and (max-width: 480px) {
-            #click-hint {
-                font-size: 45px; /* 手机端极致大小 */
-                bottom: -140px;
-                letter-spacing: 2px;
-            }
+            position: absolute; bottom: -130px; width: 100vw; left: 50%; transform: translateX(-50%);
+            text-align: center; color: #fff; font-size: 38px; font-weight: 900;
+            letter-spacing: 5px; text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+            animation: breathe-ultra 2s infinite; white-space: nowrap; pointer-events: none;
         }
 
         @keyframes breathe-ultra { 
@@ -131,17 +84,23 @@
 <body>
 
 <canvas id="matrixCanvas"></canvas>
+<canvas id="fwCanvas"></canvas>
 <canvas id="particleCanvas"></canvas>
 
 <div id="book-container">
-    <div class="book">
+    <div class="spiral" id="spiral-rings">
+        <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+        <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+        <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+        <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+    </div>
+
+    <div class="book" id="main-book">
         <div class="page" id="p1" style="z-index: 3;" onclick="flip(this, 3)">
             <div class="side cover">
                 <div class="cover-title">
-                    <h1 style="margin:0; font-size: 32px;">Mwe Sein</h1>
-                    <div style="height: 2px; background: #d4af37; margin: 15px 0;"></div>
-                    <p style="font-size: 14px; letter-spacing: 2px;">EXCLUSIVE ALBUM</p>
-                    <small>点击翻开惊喜</small>
+                    <h1>Mwe Sein</h1>
+                    <p style="letter-spacing: 5px; font-size: 14px; margin-top: 10px;">NOTEBOOK</p>
                 </div>
             </div>
             <div class="side back page-inner">
@@ -156,10 +115,10 @@
 
         <div class="page" id="p3" style="z-index: 1;" onclick="flip(this, 1)">
             <div class="side page-inner"><img src="mwe4.jpg" alt="Photo 4"></div>
-            <div class="side back cover" style="background:#1a1a1a; border:none;">
-                <div style="text-align:center">
-                    <h2 style="color:#d4af37">Happy Birthday</h2>
-                    <p style="color:#eee; font-size:12px">所有的美好都如约而至</p>
+            <div class="side back cover" style="border: none;">
+                <div style="text-align:center; color: #4a3721;">
+                    <h2 style="font-size: 30px;">Happy Birthday to You</h2>
+                    <p>Wishing you a wonderful day!</p>
                 </div>
             </div>
         </div>
@@ -168,7 +127,7 @@
 </div>
 
 <script>
-// --- 背景雨 logic ---
+// --- Slower Matrix ---
 const mCanvas = document.getElementById('matrixCanvas');
 const mCtx = mCanvas.getContext('2d');
 let mW, mH;
@@ -176,38 +135,67 @@ function resizeM() { mW = mCanvas.width = window.innerWidth; mH = mCanvas.height
 window.addEventListener('resize', resizeM); resizeM();
 
 const chars = "01";
-const fontSize = 16;
-const columns = mW / fontSize;
-const drops = Array(Math.floor(columns)).fill(1);
-
-let lastTime = 0;
-const fps = 20;
+const drops = Array(Math.floor(mW/16)).fill(1);
+let lastMatrixTime = 0;
+const matrixFPS = 12;
 
 function drawMatrix(timestamp) {
     requestAnimationFrame(drawMatrix);
-    const diff = timestamp - lastTime;
-    if (diff < 1000 / fps) return;
-    lastTime = timestamp;
-
-    mCtx.fillStyle = "rgba(0, 0, 0, 0.08)";
-    mCtx.fillRect(0, 0, mW, mH);
-    mCtx.fillStyle = "#0F0"; 
-    mCtx.font = fontSize + "px monospace";
-
-    for (let i = 0; i < drops.length; i++) {
-        const text = chars[Math.floor(Math.random() * chars.length)];
-        mCtx.fillText(text, i * fontSize, drops[i] * fontSize);
-        if (drops[i] * fontSize > mH && Math.random() > 0.985) drops[i] = 0;
+    const diff = timestamp - lastMatrixTime;
+    if (diff < 1000 / matrixFPS) return;
+    lastMatrixTime = timestamp;
+    mCtx.fillStyle = "rgba(0, 0, 0, 0.15)"; mCtx.fillRect(0, 0, mW, mH);
+    mCtx.fillStyle = "#0F0"; mCtx.font = "16px monospace";
+    drops.forEach((y, i) => {
+        const text = chars[Math.floor(Math.random()*chars.length)];
+        mCtx.fillText(text, i*16, y*16);
+        if (y*16 > mH && Math.random() > 0.98) drops[i] = 0;
         drops[i]++;
-    }
+    });
 }
 
-// --- 粒子 logic ---
+// --- Enhanced Fireworks ---
+const fwCanvas = document.getElementById('fwCanvas');
+const fwCtx = fwCanvas.getContext('2d');
+let fwW, fwH, fireworks = [];
+function resizeFW() { fwW = fwCanvas.width = window.innerWidth; fwH = fwCanvas.height = window.innerHeight; }
+window.addEventListener('resize', resizeFW); resizeFW();
+
+class FireworkParticle {
+    constructor(x, y, color) {
+        this.x = x; this.y = y; this.color = color;
+        this.velocity = { x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 8 };
+        this.alpha = 1; this.decay = Math.random() * 0.015 + 0.015;
+    }
+    draw() {
+        fwCtx.save(); fwCtx.globalAlpha = this.alpha; fwCtx.beginPath();
+        fwCtx.arc(this.x, this.y, 2, 0, Math.PI * 2); fwCtx.fillStyle = this.color; fwCtx.fill(); fwCtx.restore();
+    }
+    update() { this.x += this.velocity.x; this.y += this.velocity.y; this.velocity.y += 0.05; this.alpha -= this.decay; }
+}
+
+function launchFirework() {
+    const x = Math.random() * fwW;
+    const y = Math.random() * (fwH * 0.6);
+    const color = `hsl(${Math.random() * 360}, 100%, 60%)`;
+    for (let i = 0; i < 40; i++) fireworks.push(new FireworkParticle(x, y, color));
+}
+
+function animateFW() {
+    requestAnimationFrame(animateFW);
+    fwCtx.clearRect(0, 0, fwW, fwH);
+    fireworks.forEach((p, i) => {
+        p.update(); p.draw();
+        if (p.alpha <= 0) fireworks.splice(i, 1);
+    });
+}
+
+// --- Blue Particles (Text) ---
 const pCanvas = document.getElementById('particleCanvas');
 const pCtx = pCanvas.getContext('2d');
-let pW, pH, particles = [], countdownNum = 10;
+let pW, pH, particles = [], countdownNum = 3; 
 let hideParticles = false;
-let currentParticleColor = "#42c8f5"; 
+const BLUE_COLOR = "#42c8f5"; 
 
 function resizeP() { pW = pCanvas.width = window.innerWidth; pH = pCanvas.height = window.innerHeight; }
 window.addEventListener('resize', resizeP); resizeP();
@@ -216,7 +204,7 @@ function getPoints(text) {
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
     tempCanvas.width = pW; tempCanvas.height = pH;
-    let fs = (text === "Mwe Sein") ? Math.min(pW/5, 150) : (text === "Happy Birthday" ? Math.min(pW/7, 120) : Math.min(pW/4, 200));
+    let fs = text.length > 15 ? Math.min(pW/10, 60) : Math.min(pW/4, 200);
     tempCtx.font = `bold ${fs}px sans-serif`;
     tempCtx.textAlign = "center"; tempCtx.textBaseline = "middle";
     tempCtx.fillText(text, pW/2, pH/2);
@@ -233,52 +221,52 @@ function getPoints(text) {
 function updateTargets(pts) {
     particles.forEach((p, i) => {
         const t = pts[i % pts.length];
-        p.tx = t.x; p.ty = t.y;
+        if(t) { p.tx = t.x; p.ty = t.y; }
     });
-}
-
-function initParticles() {
-    for (let i = 0; i < 2000; i++) {
-        particles.push({ x: Math.random()*pW, y: Math.random()*pH, tx: pW/2, ty: pH/2, size: Math.random()*2 + 1 });
-    }
-    runFlow();
 }
 
 function runFlow() {
     if (countdownNum >= 1) {
-        currentParticleColor = "#42c8f5"; 
         updateTargets(getPoints(countdownNum.toString()));
-        countdownNum--; setTimeout(runFlow, 1000);
+        countdownNum--;
+        setTimeout(runFlow, 1000);
     } else {
-        currentParticleColor = "#e0eb13"; 
-        updateTargets(getPoints("Happy Birthday"));
+        updateTargets(getPoints("Happy Birthday to You"));
+        // Launch fireworks repeatedly
+        const fwLaunch = setInterval(launchFirework, 150);
         setTimeout(() => {
-            currentParticleColor = "#eb13d1"; 
+            clearInterval(fwLaunch);
             updateTargets(getPoints("Mwe Sein"));
-            setTimeout(showBook, 3000);
+            setTimeout(showBook, 1500);
         }, 3000);
     }
 }
 
 function showBook() {
     particles.forEach(p => { p.ty = -pH; });
-    setTimeout(() => { hideParticles = true; }, 2000);
+    setTimeout(() => { hideParticles = true; }, 1500);
     const bc = document.getElementById('book-container');
     bc.style.display = 'block';
     setTimeout(() => { bc.style.opacity = '1'; }, 100);
 }
 
 function flip(el, z) {
-    const hint = document.getElementById('click-hint');
-    if (hint) hint.style.display = 'none';
-
+    const book = document.getElementById('main-book');
+    document.getElementById('click-hint').style.display = 'none';
     if (!el.classList.contains('flipped')) {
         el.classList.add('flipped');
+        if(el.id === 'p1') book.classList.add('flipped-active');
         setTimeout(() => { el.style.zIndex = "0"; }, 700);
     } else {
         el.style.zIndex = z;
+        if(el.id === 'p1') book.classList.remove('flipped-active');
         setTimeout(() => { el.classList.remove('flipped'); }, 1);
     }
+}
+
+function initParticles() {
+    for (let i = 0; i < 2000; i++) particles.push({ x: Math.random()*pW, y: Math.random()*pH, tx: pW/2, ty: pH/2, size: Math.random()*2 + 1 });
+    runFlow();
 }
 
 function animateParticles() {
@@ -286,18 +274,14 @@ function animateParticles() {
         pCtx.clearRect(0, 0, pW, pH);
         particles.forEach(p => {
             p.x += (p.tx - p.x) * 0.08; p.y += (p.ty - p.y) * 0.08;
-            pCtx.fillStyle = currentParticleColor; 
-            pCtx.beginPath(); pCtx.arc(p.x, p.y, p.size, 0, Math.PI*2); pCtx.fill();
+            pCtx.fillStyle = BLUE_COLOR; pCtx.beginPath(); pCtx.arc(p.x, p.y, p.size, 0, Math.PI*2); pCtx.fill();
         });
-    } else {
-        pCtx.clearRect(0, 0, pW, pH);
     }
     requestAnimationFrame(animateParticles);
 }
 
-initParticles(); 
-requestAnimationFrame(drawMatrix);
-animateParticles();
+initParticles(); resizeM(); resizeFW(); resizeP();
+drawMatrix(); animateFW(); animateParticles();
 </script>
 </body>
 </html>
