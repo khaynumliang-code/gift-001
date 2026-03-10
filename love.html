@@ -98,22 +98,25 @@ function animateFW() {
     fireworks.forEach((p, i) => { p.update(); p.draw(); if (p.alpha <= 0) fireworks.splice(i, 1); });
 }
 
-/* --- 核心修复：支持换行排版 --- */
 function getPoints(text) {
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
     tempCanvas.width = fwW; tempCanvas.height = fwH;
     
-    // 设置大号粗体
-    let fontSize = Math.min(fwW / 6, 120); 
+    let fontSize;
+    if (text.length === 1 && !isNaN(text)) {
+        fontSize = Math.min(fwW * 0.8, 500); 
+    } else {
+        fontSize = Math.min(fwW / 6, 120); 
+    }
+    
     tempCtx.font = `900 ${fontSize}px system-ui, sans-serif`;
     tempCtx.textAlign = "center"; 
     tempCtx.textBaseline = "middle";
     tempCtx.fillStyle = "white";
 
-    // 处理换行逻辑
     const lines = text.split('\n');
-    const lineHeight = fontSize * 1.2;
+    const lineHeight = fontSize * 1.1;
     const totalHeight = lines.length * lineHeight;
     const startY = (fwH - totalHeight) / 2 + lineHeight / 2;
 
@@ -123,7 +126,7 @@ function getPoints(text) {
     
     const data = tempCtx.getImageData(0, 0, fwW, fwH).data;
     const pts = [];
-    const step = 4; // 高密度采样
+    const step = 4; 
     for (let y = 0; y < fwH; y += step) {
         for (let x = 0; x < fwW; x += step) {
             if (data[(y * fwW + x) * 4 + 3] > 128) pts.push({x, y});
@@ -145,10 +148,8 @@ function runFlow() {
         countdownNum--; 
         setTimeout(runFlow, 1000);
     } else {
-        // 修改点：这里传入 \n 实现上下换行显示
         updateTargets(getPoints("Happy\nBirthday"));
         const fwLaunch = setInterval(launchFirework, 150); 
-        
         setTimeout(() => {
             updateTargets(getPoints("To\nYou"));
             setTimeout(() => {
@@ -169,6 +170,7 @@ function runFlow() {
     }
 }
 
+/* --- 优化后的灵敏滑动逻辑 --- */
 function initGallery() {
     const slider = document.getElementById('main-slider');
     const slides = document.querySelectorAll('.slide');
@@ -186,7 +188,7 @@ function initGallery() {
     function setPositionByIndex() {
         currentTranslate = currentIndex * -window.innerWidth;
         prevTranslate = currentTranslate;
-        slider.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
+        slider.style.transition = 'transform 0.5s cubic-bezier(0.15, 0.3, 0.25, 1)'; // 缩短过渡时间，更跟手
         setSliderPosition();
         document.querySelectorAll('.dot').forEach((dot, i) => dot.classList.toggle('active', i === currentIndex));
     }
@@ -207,8 +209,12 @@ function initGallery() {
         if (!isDragging) return;
         isDragging = false;
         const movedBy = currentTranslate - prevTranslate;
-        if (movedBy < -100 && currentIndex < slides.length - 1) currentIndex++;
-        else if (movedBy > 100 && currentIndex > 0) currentIndex--;
+
+        // 核心修改：大幅降低翻页门槛（从 100 降到 30 像素）
+        const threshold = 30; 
+        if (movedBy < -threshold && currentIndex < slides.length - 1) currentIndex++;
+        else if (movedBy > threshold && currentIndex > 0) currentIndex--;
+
         setPositionByIndex();
     }
 
@@ -218,13 +224,11 @@ function initGallery() {
     slider.addEventListener('mousedown', onStart);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onEnd);
-    window.addEventListener('resize', setPositionByIndex);
 }
 
 function initParticles() {
-    // 增加粒子数到 3000，让双行显示更饱满
-    for (let i = 0; i < 3000; i++) {
-        particles.push({ x: Math.random()*fwW, y: Math.random()*fwH, tx: fwW/2, ty: fwH/2, size: Math.random()*2 + 1 });
+    for (let i = 0; i < 3500; i++) {
+        particles.push({ x: Math.random()*fwW, y: Math.random()*fwH, tx: fwW/2, ty: fwH/2, size: Math.random()*2.5 + 1 });
     }
     runFlow();
 }
@@ -234,7 +238,7 @@ function animateParticles() {
         pCtx.clearRect(0, 0, fwW, fwH);
         pCtx.fillStyle = BLUE_COLOR;
         particles.forEach(p => {
-            p.x += (p.tx - p.x) * 0.08; p.y += (p.ty - p.y) * 0.08;
+            p.x += (p.tx - p.x) * 0.1; p.y += (p.ty - p.y) * 0.1;
             pCtx.beginPath(); pCtx.arc(p.x, p.y, p.size, 0, Math.PI*2); pCtx.fill();
         });
     }
