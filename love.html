@@ -2,69 +2,65 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>Mwe Sein - Blue Theme with Fireworks</title>
+    <title>Mwe Sein - Fixed Position</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: "Segoe UI", sans-serif; }
         canvas { display: block; position: absolute; top: 0; left: 0; }
         
-        /* Layer positioning */
-        #matrixCanvas { z-index: 1; }
         #fwCanvas { z-index: 50; pointer-events: none; }
         #particleCanvas { z-index: 100; pointer-events: none; }
 
         #book-container {
             position: absolute;
             top: 50%;
-            left: 70%; /* 保持你原来的 70% 位置 */
-            transform: translate(-50%, -50%);
+            /* 锁定靠右位置 */
+            left: 70%; 
+            /* 确保初始状态就是偏移后的，防止从左边跳过来 */
+            transform: translate(-50%, -50%); 
             width: 400px;
             height: 520px;
             perspective: 2500px;
-            display: none; /* 初始隐藏 */
-            opacity: 0;    /* 初始透明 */
+            
+            display: none; 
+            opacity: 0;    
             z-index: 200;
-            /* 增加平滑过渡时间 */
-            transition: opacity 2s ease-in-out; 
+            
+            /* 性能优化：提前告诉浏览器要动位置和透明度 */
+            will-change: transform, opacity;
+            transition: opacity 1.5s ease-out;
         }
 
+        /* 翻书效果保持不变 */
         .book { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
-
         .spiral {
             position: absolute; left: -15px; top: 20px; width: 30px; height: calc(100% - 40px);
             display: flex; flex-direction: column; justify-content: space-around;
             z-index: 10; pointer-events: none; transform-style: preserve-3d;
         }
-
         .ring {
             width: 35px; height: 10px; background: linear-gradient(to bottom, #444, #888, #444);
             border-radius: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
             transition: transform 1.6s cubic-bezier(0.645, 0.045, 0.355, 1);
         }
-
         .page {
             position: absolute; width: 100%; height: 100%; top: 0; left: 0;
             transform-origin: left; transform-style: preserve-3d;
             transition: transform 1.6s cubic-bezier(0.645, 0.045, 0.355, 1);
             cursor: pointer;
         }
-
         .side {
             position: absolute; width: 100%; height: 100%; backface-visibility: hidden;
             border-radius: 5px 15px 15px 5px; display: flex; align-items: center; justify-content: center; overflow: hidden;
         }
-
         .cover {
             background-color: #a68a64;
             background-image: radial-gradient(rgba(0,0,0,0.05) 1px, transparent 1px);
             background-size: 3px 3px; border-left: 20px solid rgba(0,0,0,0.1);
         }
-        
         .cover-title { text-align: center; padding: 20px; color: #4a3721; }
         .cover-title h1 { font-size: 42px; margin: 0; font-family: "Georgia", serif; opacity: 0.8; }
-
         .page-inner { background: #fff; box-shadow: inset 20px 0 50px rgba(0,0,0,0.05); }
         .page-inner img { width: 85%; height: 85%; object-fit: cover; border: 10px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        
         .back { transform: rotateY(180deg); background-color: #f5f5f5; }
         .page.flipped { transform: rotateY(-155deg); }
         .book.flipped-active .ring { transform: rotateY(-155deg); }
@@ -84,7 +80,6 @@
 </head>
 <body>
 
-<canvas id="matrixCanvas"></canvas>
 <canvas id="fwCanvas"></canvas>
 <canvas id="particleCanvas"></canvas>
 
@@ -128,34 +123,7 @@
 </div>
 
 <script>
-// --- Slower Matrix ---
-const mCanvas = document.getElementById('matrixCanvas');
-const mCtx = mCanvas.getContext('2d');
-let mW, mH;
-function resizeM() { mW = mCanvas.width = window.innerWidth; mH = mCanvas.height = window.innerHeight; }
-window.addEventListener('resize', resizeM); resizeM();
-
-const chars = "01";
-const drops = Array(Math.floor(mW/16)).fill(1);
-let lastMatrixTime = 0;
-const matrixFPS = 12;
-
-function drawMatrix(timestamp) {
-    requestAnimationFrame(drawMatrix);
-    const diff = timestamp - lastMatrixTime;
-    if (diff < 1000 / matrixFPS) return;
-    lastMatrixTime = timestamp;
-    mCtx.fillStyle = "rgba(0, 0, 0, 0.15)"; mCtx.fillRect(0, 0, mW, mH);
-    mCtx.fillStyle = "#0F0"; mCtx.font = "16px monospace";
-    drops.forEach((y, i) => {
-        const text = chars[Math.floor(Math.random()*chars.length)];
-        mCtx.fillText(text, i*16, y*16);
-        if (y*16 > mH && Math.random() > 0.98) drops[i] = 0;
-        drops[i]++;
-    });
-}
-
-// --- Enhanced Fireworks ---
+// --- Fireworks Logic ---
 const fwCanvas = document.getElementById('fwCanvas');
 const fwCtx = fwCanvas.getContext('2d');
 let fwW, fwH, fireworks = [];
@@ -191,7 +159,7 @@ function animateFW() {
     });
 }
 
-// --- Blue Particles (Text) ---
+// --- Blue Particles Logic ---
 const pCanvas = document.getElementById('particleCanvas');
 const pCtx = pCanvas.getContext('2d');
 let pW, pH, particles = [], countdownNum = 3; 
@@ -242,26 +210,30 @@ function runFlow() {
     }
 }
 
-// --- 修正后的 showBook 函数 ---
+// --- 修正位置跳变的显示函数 ---
 function showBook() {
     particles.forEach(p => { p.ty = -pH; });
     setTimeout(() => { hideParticles = true; }, 1500);
 
     const bc = document.getElementById('book-container');
     
-    // 第一步：先展示容器（此时 opacity 还是 0，所以看不见，但占位了）
+    // 关键步骤 1：先设置为可见，但保持透明
     bc.style.display = 'block';
     
-    // 第二步：稍微延迟一点点（100毫秒），再把透明度变 1
-    // 这样浏览器就能正确执行 CSS 的 transition 过渡效果
-    setTimeout(() => {
+    // 关键步骤 2：强制浏览器读取一次属性，这会“锁死”当前的 70% 位置
+    void bc.offsetWidth; 
+
+    // 关键步骤 3：在下一帧再开始淡入
+    requestAnimationFrame(() => {
         bc.style.opacity = '1';
-    }, 100);
+    });
 }
 
 function flip(el, z) {
     const book = document.getElementById('main-book');
-    document.getElementById('click-hint').style.display = 'none';
+    const hint = document.getElementById('click-hint');
+    if(hint) hint.style.display = 'none';
+    
     if (!el.classList.contains('flipped')) {
         el.classList.add('flipped');
         if(el.id === 'p1') book.classList.add('flipped-active');
@@ -274,7 +246,9 @@ function flip(el, z) {
 }
 
 function initParticles() {
-    for (let i = 0; i < 2000; i++) particles.push({ x: Math.random()*pW, y: Math.random()*pH, tx: pW/2, ty: pH/2, size: Math.random()*2 + 1 });
+    for (let i = 0; i < 2000; i++) {
+        particles.push({ x: Math.random()*pW, y: Math.random()*pH, tx: pW/2, ty: pH/2, size: Math.random()*2 + 1 });
+    }
     runFlow();
 }
 
@@ -282,15 +256,20 @@ function animateParticles() {
     if (!hideParticles) {
         pCtx.clearRect(0, 0, pW, pH);
         particles.forEach(p => {
-            p.x += (p.tx - p.x) * 0.08; p.y += (p.ty - p.y) * 0.08;
-            pCtx.fillStyle = BLUE_COLOR; pCtx.beginPath(); pCtx.arc(p.x, p.y, p.size, 0, Math.PI*2); pCtx.fill();
+            p.x += (p.tx - p.x) * 0.08; 
+            p.y += (p.ty - p.y) * 0.08;
+            pCtx.fillStyle = BLUE_COLOR; 
+            pCtx.beginPath(); 
+            pCtx.arc(p.x, p.y, p.size, 0, Math.PI*2); 
+            pCtx.fill();
         });
     }
     requestAnimationFrame(animateParticles);
 }
 
-initParticles(); resizeM(); resizeFW(); resizeP();
-drawMatrix(); animateFW(); animateParticles();
+// 启动
+initParticles(); resizeFW(); resizeP();
+animateFW(); animateParticles();
 </script>
 </body>
 </html>
