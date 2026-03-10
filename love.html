@@ -11,7 +11,6 @@
 
         #book-container {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            /* 宽度从 450px 增加到 650px */
             width: 650px; height: 580px; perspective: 3000px;
             display: none; opacity: 0; z-index: 200;
             transition: opacity 0.8s ease-in-out;
@@ -24,7 +23,6 @@
             display: flex; flex-direction: row; justify-content: space-around;
             z-index: 10; pointer-events: none; transform-style: preserve-3d;
         }
-        /* 这里的圈圈会自动平铺 */
         .ring {
             width: 10px; height: 35px; background: linear-gradient(to right, #444, #888, #444);
             border-radius: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
@@ -66,6 +64,7 @@
         }
 
         .page-inner img { 
+            /* 调整为完整居中显示 */
             width: 90%; height: 90%; object-fit: contain; 
             border: 10px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.15); 
             pointer-events: none; -webkit-user-drag: none;
@@ -101,7 +100,7 @@
     </div>
 
     <div class="book" id="main-book">
-        <div class="page" id="p1" style="z-index: 3;">
+        <div class="page" id="p1" style="z-index: 5;">
             <div class="side cover">
                 <div class="cover-title">
                     <h1>Mwe Sein</h1>
@@ -111,13 +110,18 @@
             <div class="side back page-inner"><img src="mwe1.jpg" alt="Photo 1"></div>
         </div>
 
-        <div class="page" id="p2" style="z-index: 2;">
+        <div class="page" id="p2" style="z-index: 4;">
             <div class="side page-inner"><img src="mwe2.jpg" alt="Photo 2"></div>
             <div class="side back page-inner"><img src="mwe3.jpg" alt="Photo 3"></div>
         </div>
 
-        <div class="page" id="p3" style="z-index: 1;">
+        <div class="page" id="p3" style="z-index: 3;">
             <div class="side page-inner"><img src="mwe4.jpg" alt="Photo 4"></div>
+            <div class="side back page-inner"><img src="mwe5.jpg" alt="Photo 5"></div>
+        </div>
+
+        <div class="page" id="p4" style="z-index: 2;">
+            <div class="side page-inner"><img src="mwe6.jpg" alt="Photo 6"></div>
             <div class="side back cover" style="border: none;">
                 <div style="text-align:center; color: #3a2b1a; padding: 20px;">
                     <h2 style="font-size: 36px;">Happy Birthday</h2>
@@ -125,8 +129,9 @@
                 </div>
             </div>
         </div>
+        
     </div>
-    <div id="click-hint">✦ စာအုပ်ကိုအောက်မှအပေါ်သို့ဆွဲဖွင့်ရန် ✦</div>
+    <div id="click-hint">✦ ✨ 向上拉动翻开 ✨ ✦</div>
 </div>
 
 <script>
@@ -225,7 +230,8 @@ function initBookEvents() {
     let isDragging = false, startY = 0, currentTargetPage = null;
 
     pages.forEach(page => {
-        const originalZ = page.id === 'p1' ? 3 : (page.id === 'p2' ? 2 : 1);
+        // 根据新的页面数量（4张卡片）重设 zIndex 层级
+        const originalZ = parseInt(window.getComputedStyle(page).zIndex); 
         page.querySelectorAll('img').forEach(img => { img.ondragstart = () => false; });
 
         const startHandler = (e) => {
@@ -244,14 +250,15 @@ function initBookEvents() {
                 if (diff < 0) {
                     let angle = Math.max(-165, diff * 0.7);
                     page.style.transform = `rotateX(${-angle}deg)`;
-                    if (angle < -85) page.style.zIndex = "0";
+                    // 阈值设为 90deg（垂直状态）进行层级切换
+                    if (angle < -90) page.style.zIndex = "0";
                     else page.style.zIndex = originalZ;
                 }
             } else {
                 if (diff > 0) {
                     let angle = Math.min(0, -165 + diff * 0.7);
                     page.style.transform = `rotateX(${-angle}deg)`;
-                    if (angle > -85) page.style.zIndex = originalZ;
+                    if (angle > -90) page.style.zIndex = originalZ;
                     else page.style.zIndex = "0";
                 }
             }
@@ -265,7 +272,7 @@ function initBookEvents() {
             
             page.style.transition = 'transform 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
             
-            const threshold = 100; // 调宽了书，阈值稍微调高一点更有质感
+            const threshold = 100;
 
             if (!page.classList.contains('flipped')) {
                 if (diff < -threshold) {
@@ -312,6 +319,7 @@ function flipPage(el, originalZ, shouldFlip) {
         el.classList.add('flipped');
         el.style.transform = 'rotateX(165deg)';
         if(el.id === 'p1') book.classList.add('flipped-active');
+        // 调整层级切换时间，在动画进行到一半（约0.75s）时将层级降到底部
         setTimeout(() => { if(el.classList.contains('flipped')) el.style.zIndex = "0"; }, 750);
     } else {
         el.style.zIndex = originalZ;
