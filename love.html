@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>Mwe Sein - Fixed Position</title>
+    <title>Mwe Sein - Ultra Smooth Version</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: "Segoe UI", sans-serif; }
         canvas { display: block; position: absolute; top: 0; left: 0; }
@@ -13,24 +13,28 @@
         #book-container {
             position: absolute;
             top: 50%;
-            /* 锁定靠右位置 */
-            left: 70%; 
-            /* 确保初始状态就是偏移后的，防止从左边跳过来 */
-            transform: translate(-50%, -50%); 
+            left: 70%; /* 锁定手机端靠右位置 */
+            transform: translate(-50%, -50%);
             width: 400px;
             height: 520px;
             perspective: 2500px;
             
-            display: none; 
+            /* 关键改进：不使用 display:none，改用 visibility 和 opacity */
+            visibility: hidden; 
             opacity: 0;    
             z-index: 200;
             
-            /* 性能优化：提前告诉浏览器要动位置和透明度 */
-            will-change: transform, opacity;
-            transition: opacity 1.5s ease-out;
+            /* 增加平稳过渡效果 */
+            transition: opacity 2s ease-in-out, visibility 2s;
+            will-change: opacity;
         }
 
-        /* 翻书效果保持不变 */
+        /* 当增加 .active 类时，书本顺滑出现 */
+        #book-container.active {
+            visibility: visible;
+            opacity: 1;
+        }
+
         .book { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
         .spiral {
             position: absolute; left: -15px; top: 20px; width: 30px; height: calc(100% - 40px);
@@ -210,23 +214,17 @@ function runFlow() {
     }
 }
 
-// --- 修正位置跳变的显示函数 ---
+// --- 极致平滑显示函数 ---
 function showBook() {
+    // 蓝色粒子飞散
     particles.forEach(p => { p.ty = -pH; });
     setTimeout(() => { hideParticles = true; }, 1500);
 
     const bc = document.getElementById('book-container');
     
-    // 关键步骤 1：先设置为可见，但保持透明
-    bc.style.display = 'block';
-    
-    // 关键步骤 2：强制浏览器读取一次属性，这会“锁死”当前的 70% 位置
-    void bc.offsetWidth; 
-
-    // 关键步骤 3：在下一帧再开始淡入
-    requestAnimationFrame(() => {
-        bc.style.opacity = '1';
-    });
+    // 直接添加 active 类，书本会在 70% 的位置原地淡入
+    // 因为它一直都在那里，只是之前透明度是 0
+    bc.classList.add('active');
 }
 
 function flip(el, z) {
@@ -267,7 +265,6 @@ function animateParticles() {
     requestAnimationFrame(animateParticles);
 }
 
-// 启动
 initParticles(); resizeFW(); resizeP();
 animateFW(); animateParticles();
 </script>
