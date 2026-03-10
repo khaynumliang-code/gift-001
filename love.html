@@ -2,419 +2,286 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mwe Sein - Premium Luxury Version</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,500&family=Montserrat:wght@300&display=swap" rel="stylesheet">
-
+    <title>Mwe Sein - Blue Theme with Fireworks</title>
     <style>
-        /* 1. အခြေခံ STYLES များ */
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #000;
-        }
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: "Segoe UI", sans-serif; }
+        canvas { display: block; position: absolute; top: 0; left: 0; }
+        
+        /* Layer positioning */
+        #matrixCanvas { z-index: 1; }
+        #fwCanvas { z-index: 50; pointer-events: none; } /* Fireworks ကို အရှေ့ကို ပိုထုတ်ထားပါတယ် */
+        #particleCanvas { z-index: 100; pointer-events: none; }
 
-        /* 2. LAYER စီမံခန့်ခွဲမှု (Z-INDEX) */
-        canvas {
-            display: block;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-
-        #matrixCanvas { z-index: 1; }   /* နောက်ခံ ဂဏန်းများ */
-        #fwCanvas { z-index: 50; pointer-events: none; } /* မီးရှူးမီးပန်း */
-        #particleCanvas { z-index: 100; pointer-events: none; } /* စာသားအစက်ကလေးများ */
-
-        /* 3. စာအုပ် CONTAINER (ဖုန်းနှင့် PC နေရာညှိခြင်း) */
         #book-container {
             position: absolute;
             top: 50%;
-            left: 50%;
+            left: 70%; 
             transform: translate(-50%, -50%);
-            width: 320px;
-            height: 480px;
-            perspective: 2000px;
-            display: none; /* အစပိုင်းတွင် ဖျောက်ထားမည် */
+            width: 400px;
+            height: 520px;
+            perspective: 2500px;
+            display: none;
             opacity: 0;
-            transition: opacity 2s ease;
+            transition: opacity 2s ease-in-out;
             z-index: 200;
         }
 
-        @media screen and (min-width: 1024px) {
-            #book-container {
-                left: 75%; /* PC မှာ ညာဘက်ကို ပို့ထားမည် */
-                width: 420px;
-                height: 580px;
-            }
-        }
+        .book { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
 
-        .book {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            transform-style: preserve-3d;
-        }
-
-        /* 4. ရွှေရောင်စာသား ဒီဇိုင်း (GOLD FOIL EFFECT) */
-        .gold-title {
-            background: linear-gradient(
-                to right, 
-                #bf953f, 
-                #fcf6ba, 
-                #b38728, 
-                #fbf5b7, 
-                #aa771c
-            );
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-family: 'Playfair Display', serif;
-            font-weight: 700;
-            text-align: center;
-            filter: drop-shadow(0px 2px 3px rgba(0,0,0,0.4));
-            margin: 0;
-            display: block;
-        }
-
-        /* 5. စာအုပ် စပရိန်ကွင်းများ */
         .spiral {
-            position: absolute;
-            left: -15px;
-            top: 25px;
-            width: 30px;
-            height: calc(100% - 50px);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-around;
-            z-index: 10;
-            transform-style: preserve-3d;
+            position: absolute; left: -15px; top: 20px; width: 30px; height: calc(100% - 40px);
+            display: flex; flex-direction: column; justify-content: space-around;
+            z-index: 10; pointer-events: none; transform-style: preserve-3d;
         }
 
         .ring {
-            width: 35px;
-            height: 10px;
-            background: linear-gradient(to bottom, #444, #eee, #444);
-            border-radius: 5px;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.6);
+            width: 35px; height: 10px; background: linear-gradient(to bottom, #444, #888, #444);
+            border-radius: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
             transition: transform 1.6s cubic-bezier(0.645, 0.045, 0.355, 1);
         }
 
-        /* 6. စာမျက်နှာ ဒီဇိုင်းများ */
         .page {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            transform-origin: left;
-            transform-style: preserve-3d;
+            position: absolute; width: 100%; height: 100%; top: 0; left: 0;
+            transform-origin: left; transform-style: preserve-3d;
             transition: transform 1.6s cubic-bezier(0.645, 0.045, 0.355, 1);
             cursor: pointer;
         }
 
         .side {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            backface-visibility: hidden;
-            border-radius: 4px 15px 15px 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
+            position: absolute; width: 100%; height: 100%; backface-visibility: hidden;
+            border-radius: 5px 15px 15px 5px; display: flex; align-items: center; justify-content: center; overflow: hidden;
         }
 
-        /* သားရေမျက်နှာဖုံး (LEATHER TEXTURE) */
         .cover {
-            background-color: #4e342e; /* ရင့်မှောင်သော အညိုရောင် */
-            background-image: url("https://www.transparenttextures.com/patterns/leather.png");
-            border-left: 15px solid rgba(0,0,0,0.3);
-            box-shadow: inset -5px 0 15px rgba(0,0,0,0.4);
+            background-color: #a68a64;
+            background-image: radial-gradient(rgba(0,0,0,0.05) 1px, transparent 1px);
+            background-size: 3px 3px; border-left: 20px solid rgba(0,0,0,0.1);
         }
         
-        .page-inner {
-            background: #ffffff;
-            box-shadow: inset 20px 0 50px rgba(0,0,0,0.1);
-        }
+        .cover-title { text-align: center; padding: 20px; color: #4a3721; }
+        .cover-title h1 { font-size: 42px; margin: 0; font-family: "Georgia", serif; opacity: 0.8; }
+
+        .page-inner { background: #fff; box-shadow: inset 20px 0 50px rgba(0,0,0,0.05); }
+        .page-inner img { width: 85%; height: 85%; object-fit: cover; border: 10px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         
-        .page-inner img {
-            width: 85%;
-            height: 85%;
-            object-fit: cover;
-            border: 8px solid #fff;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-        }
-        
-        .back {
-            transform: rotateY(180deg);
-            background-color: #fcfcfc;
-        }
-        
-        /* Animation လှုပ်ရှားမှုများ */
+        .back { transform: rotateY(180deg); background-color: #f5f5f5; }
         .page.flipped { transform: rotateY(-155deg); }
         .book.flipped-active .ring { transform: rotateY(-155deg); }
 
-        /* လမ်းညွှန်စာသား */
         #click-hint {
-            position: absolute;
-            bottom: -90px;
-            width: 100%;
-            text-align: center;
-            color: #fff;
-            font-family: 'Montserrat', sans-serif;
-            font-size: 14px;
-            letter-spacing: 4px;
-            animation: breathe 2s infinite;
-            pointer-events: none;
-            opacity: 0.7;
+            position: absolute; bottom: -130px; width: 100vw; left: 50%; transform: translateX(-50%);
+            text-align: center; color: #fff; font-size: 38px; font-weight: 900;
+            letter-spacing: 5px; text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+            animation: breathe-ultra 2s infinite; white-space: nowrap; pointer-events: none;
         }
 
-        @keyframes breathe {
-            0%, 100% { opacity: 0.3; transform: scale(0.95); }
-            50% { opacity: 0.9; transform: scale(1); }
+        @keyframes breathe-ultra { 
+            0%, 100% { opacity: 0.3; transform: translateX(-50%) scale(0.85); } 
+            50% { opacity: 1; transform: translateX(-50%) scale(1.1); } 
         }
     </style>
 </head>
 <body>
 
-    <canvas id="matrixCanvas"></canvas>
-    <canvas id="fwCanvas"></canvas>
-    <canvas id="particleCanvas"></canvas>
+<canvas id="matrixCanvas"></canvas>
+<canvas id="fwCanvas"></canvas>
+<canvas id="particleCanvas"></canvas>
 
-    <div id="book-container">
-        <div class="spiral">
-            <div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="ring"></div>
-            <div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="ring"></div>
-            <div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="ring"></div>
-        </div>
-
-        <div class="book" id="main-book">
-            <div class="page" id="p1" style="z-index: 3;" onclick="flipPage(this, 3)">
-                <div class="side cover">
-                    <div style="text-align: center; padding: 20px;">
-                        <h1 class="gold-title" style="font-size: 45px;">Mwe Sein</h1>
-                        <p style="color: rgba(255,255,255,0.4); font-family: 'Montserrat', sans-serif; letter-spacing: 6px; font-size: 11px; margin-top: 15px;">PRIVATE COLLECTION</p>
-                    </div>
-                </div>
-                <div class="side back page-inner">
-                    <img src="mwe1.jpg" alt="Photo 1">
-                </div>
-            </div>
-
-            <div class="page" id="p2" style="z-index: 2;" onclick="flipPage(this, 2)">
-                <div class="side page-inner">
-                    <img src="mwe2.jpg" alt="Photo 2">
-                </div>
-                <div class="side back page-inner">
-                    <img src="mwe3.jpg" alt="Photo 3">
-                </div>
-            </div>
-
-            <div class="page" id="p3" style="z-index: 1;" onclick="flipPage(this, 1)">
-                <div class="side page-inner">
-                    <img src="mwe4.jpg" alt="Photo 4">
-                </div>
-                <div class="side back cover" style="border: none;">
-                    <div style="text-align: center; padding: 25px;">
-                        <h2 class="gold-title" style="font-size: 32px; line-height: 1.3;">Happy Birthday<br><span style="font-style: italic; font-weight: 400; font-size: 22px;">To You</span></h2>
-                        <div style="width: 50px; height: 1.5px; background: #bf953f; margin: 20px auto;"></div>
-                        <p style="color: rgba(255,255,255,0.5); font-family: 'Montserrat', sans-serif; font-size: 11px; letter-spacing: 2px;">WISHING YOU ALL THE BEST</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div id="click-hint">✦ CLICK TO UNFOLD MEMORIES ✦</div>
+<div id="book-container">
+    <div class="spiral" id="spiral-rings">
+        <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+        <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+        <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+        <div class="ring"></div><div class="ring"></div><div class="ring"></div>
     </div>
 
+    <div class="book" id="main-book">
+        <div class="page" id="p1" style="z-index: 3;" onclick="flip(this, 3)">
+            <div class="side cover">
+                <div class="cover-title">
+                    <h1>Mwe Sein</h1>
+                    <p style="letter-spacing: 5px; font-size: 14px; margin-top: 10px;">NOTEBOOK</p>
+                </div>
+            </div>
+            <div class="side back page-inner">
+                <img src="mwe1.jpg" alt="Photo 1">
+            </div>
+        </div>
+
+        <div class="page" id="p2" style="z-index: 2;" onclick="flip(this, 2)">
+            <div class="side page-inner"><img src="mwe2.jpg" alt="Photo 2"></div>
+            <div class="side back page-inner"><img src="mwe3.jpg" alt="Photo 3"></div>
+        </div>
+
+        <div class="page" id="p3" style="z-index: 1;" onclick="flip(this, 1)">
+            <div class="side page-inner"><img src="mwe4.jpg" alt="Photo 4"></div>
+            <div class="side back cover" style="border: none;">
+                <div style="text-align:center; color: #4a3721;">
+                    <h2 style="font-size: 30px;">Happy Birthday to You</h2>
+                    <p>Wishing you a wonderful day!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="click-hint">✦ စာအုပ်ကိုဖွင့်ပါ ✦</div>
+</div>
+
 <script>
-    /**
-     * 1. INITIALIZATION & RESIZING
-     */
-    const mCanvas = document.getElementById('matrixCanvas');
-    const fwCanvas = document.getElementById('fwCanvas');
-    const pCanvas = document.getElementById('particleCanvas');
-    const mCtx = mCanvas.getContext('2d');
-    const fwCtx = fwCanvas.getContext('2d');
-    const pCtx = pCanvas.getContext('2d');
+// --- Slower Matrix ---
+const mCanvas = document.getElementById('matrixCanvas');
+const mCtx = mCanvas.getContext('2d');
+let mW, mH;
+function resizeM() { mW = mCanvas.width = window.innerWidth; mH = mCanvas.height = window.innerHeight; }
+window.addEventListener('resize', resizeM); resizeM();
 
-    function handleResize() {
-        mCanvas.width = fwCanvas.width = pCanvas.width = window.innerWidth;
-        mCanvas.height = fwCanvas.height = pCanvas.height = window.innerHeight;
+const chars = "01";
+const drops = Array(Math.floor(mW/16)).fill(1);
+let lastMatrixTime = 0;
+const matrixFPS = 12;
+
+function drawMatrix(timestamp) {
+    requestAnimationFrame(drawMatrix);
+    const diff = timestamp - lastMatrixTime;
+    if (diff < 1000 / matrixFPS) return;
+    lastMatrixTime = timestamp;
+    mCtx.fillStyle = "rgba(0, 0, 0, 0.15)"; mCtx.fillRect(0, 0, mW, mH);
+    mCtx.fillStyle = "#0F0"; mCtx.font = "16px monospace";
+    drops.forEach((y, i) => {
+        const text = chars[Math.floor(Math.random()*chars.length)];
+        mCtx.fillText(text, i*16, y*16);
+        if (y*16 > mH && Math.random() > 0.98) drops[i] = 0;
+        drops[i]++;
+    });
+}
+
+// --- Enhanced Fireworks ---
+const fwCanvas = document.getElementById('fwCanvas');
+const fwCtx = fwCanvas.getContext('2d');
+let fwW, fwH, fireworks = [];
+function resizeFW() { fwW = fwCanvas.width = window.innerWidth; fwH = fwCanvas.height = window.innerHeight; }
+window.addEventListener('resize', resizeFW); resizeFW();
+
+class FireworkParticle {
+    constructor(x, y, color) {
+        this.x = x; this.y = y; this.color = color;
+        this.velocity = { x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 8 };
+        this.alpha = 1; this.decay = Math.random() * 0.015 + 0.015;
     }
-    window.addEventListener('resize', handleResize);
-    handleResize();
-
-    /**
-     * 2. MATRIX RAIN
-     */
-    const chars = "01";
-    let drops = Array(Math.floor(window.innerWidth / 16)).fill(1);
-    function drawMatrix() {
-        mCtx.fillStyle = "rgba(0, 0, 0, 0.12)";
-        mCtx.fillRect(0, 0, mCanvas.width, mCanvas.height);
-        mCtx.fillStyle = "#0F0";
-        mCtx.font = "16px monospace";
-        drops.forEach((y, i) => {
-            mCtx.fillText(chars[Math.floor(Math.random() * 2)], i * 16, y * 16);
-            if (y * 16 > mCanvas.height && Math.random() > 0.985) drops[i] = 0;
-            drops[i]++;
-        });
-        setTimeout(() => requestAnimationFrame(drawMatrix), 50);
+    draw() {
+        fwCtx.save(); fwCtx.globalAlpha = this.alpha; fwCtx.beginPath();
+        fwCtx.arc(this.x, this.y, 2, 0, Math.PI * 2); fwCtx.fillStyle = this.color; fwCtx.fill(); fwCtx.restore();
     }
+    update() { this.x += this.velocity.x; this.y += this.velocity.y; this.velocity.y += 0.05; this.alpha -= this.decay; }
+}
 
-    /**
-     * 3. LUXURY FIREWORKS
-     */
-    let fireworkParticles = [];
-    class Firework {
-        constructor(x, y, color) {
-            this.x = x; this.y = y; this.color = color;
-            this.velocity = { x: (Math.random() - 0.5) * 12, y: (Math.random() - 0.5) * 12 };
-            this.alpha = 1;
-        }
-        update() {
-            this.x += this.velocity.x;
-            this.y += this.velocity.y;
-            this.velocity.y += 0.08;
-            this.alpha -= 0.015;
-        }
-        draw() {
-            fwCtx.globalAlpha = this.alpha;
-            fwCtx.fillStyle = this.color;
-            fwCtx.beginPath(); fwCtx.arc(this.x, this.y, 2.8, 0, Math.PI * 2); fwCtx.fill();
-        }
-    }
+function launchFirework() {
+    const x = Math.random() * fwW;
+    const y = Math.random() * (fwH * 0.6);
+    const color = `hsl(${Math.random() * 360}, 100%, 60%)`;
+    for (let i = 0; i < 40; i++) fireworks.push(new FireworkParticle(x, y, color));
+}
 
-    function launchFirework() {
-        const x = Math.random() * fwCanvas.width;
-        const y = Math.random() * (fwCanvas.height * 0.45);
-        const color = `hsl(${Math.random() * 360}, 100%, 70%)`;
-        for (let i = 0; i < 50; i++) fireworkParticles.push(new Firework(x, y, color));
-    }
+function animateFW() {
+    requestAnimationFrame(animateFW);
+    fwCtx.clearRect(0, 0, fwW, fwH);
+    fireworks.forEach((p, i) => {
+        p.update(); p.draw();
+        if (p.alpha <= 0) fireworks.splice(i, 1);
+    });
+}
 
-    function animateFireworks() {
-        fwCtx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
-        fireworkParticles = fireworkParticles.filter(p => p.alpha > 0);
-        fireworkParticles.forEach(p => { p.update(); p.draw(); });
-        requestAnimationFrame(animateFireworks);
-    }
+// --- Blue Particles (Text) ---
+const pCanvas = document.getElementById('particleCanvas');
+const pCtx = pCanvas.getContext('2d');
+let pW, pH, particles = [], countdownNum = 3; 
+let hideParticles = false;
+const BLUE_COLOR = "#42c8f5"; 
 
-    /**
-     * 4. PARTICLE TEXT LOGIC (FIX FOR TEXT SIZE)
-     */
-    let textParticles = [], currentCountdown = 3, isParticlesHidden = false;
-    
-    function getPoints(text) {
-        const temp = document.createElement('canvas');
-        const tx = temp.getContext('2d');
-        temp.width = window.innerWidth;
-        temp.height = window.innerHeight;
+function resizeP() { pW = pCanvas.width = window.innerWidth; pH = pCanvas.height = window.innerHeight; }
+window.addEventListener('resize', resizeP); resizeP();
 
-        let maxWidth = window.innerWidth * 0.85;
-        let fontSize = window.innerWidth / (text.length > 10 ? 12 : 5);
-        tx.font = `bold ${fontSize}px sans-serif`;
-
-        // စာသား မကျော်စေရန် font size လျှော့ချခြင်း
-        let metrics = tx.measureText(text);
-        while (metrics.width > maxWidth) {
-            fontSize -= 5;
-            tx.font = `bold ${fontSize}px sans-serif`;
-            metrics = tx.measureText(text);
-        }
-
-        tx.textAlign = "center"; tx.textBaseline = "middle";
-        tx.fillText(text, temp.width / 2, temp.height / 2);
-
-        const data = tx.getImageData(0, 0, temp.width, temp.height).data;
-        const points = [];
-        for (let y = 0; y < temp.height; y += 6) {
-            for (let x = 0; x < temp.width; x += 6) {
-                if (data[(y * temp.width + x) * 4 + 3] > 128) points.push({ x, y });
-            }
-        }
-        return points;
-    }
-
-    function updateTargets(text) {
-        const targetPoints = getPoints(text);
-        textParticles.forEach((p, i) => {
-            const target = targetPoints[i % targetPoints.length];
-            p.targetX = target.x; p.targetY = target.y;
-        });
-    }
-
-    function playSequence() {
-        if (currentCountdown >= 1) {
-            updateTargets(currentCountdown.toString());
-            currentCountdown--;
-            setTimeout(playSequence, 1000);
-        } else {
-            updateTargets("Happy Birthday to You");
-            const fwLoop = setInterval(launchFirework, 150);
-            setTimeout(() => {
-                clearInterval(fwLoop);
-                updateTargets("Mwe Sein");
-                setTimeout(() => {
-                    textParticles.forEach(p => p.targetY = -window.innerHeight);
-                    setTimeout(() => {
-                        isParticlesHidden = true;
-                        const book = document.getElementById('book-container');
-                        book.style.display = 'block';
-                        setTimeout(() => book.style.opacity = '1', 100);
-                    }, 1000);
-                }, 2500);
-            }, 3500);
+function getPoints(text) {
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCanvas.width = pW; tempCanvas.height = pH;
+    let fs = text.length > 15 ? Math.min(pW/10, 60) : Math.min(pW/4, 200);
+    tempCtx.font = `bold ${fs}px sans-serif`;
+    tempCtx.textAlign = "center"; tempCtx.textBaseline = "middle";
+    tempCtx.fillText(text, pW/2, pH/2);
+    const data = tempCtx.getImageData(0, 0, pW, pH).data;
+    const pts = [];
+    for (let y = 0; y < pH; y += 7) {
+        for (let x = 0; x < pW; x += 7) {
+            if (data[(y * pW + x) * 4 + 3] > 128) pts.push({x, y});
         }
     }
+    return pts;
+}
 
-    function animateParticles() {
-        if (!isParticlesHidden) {
-            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
-            textParticles.forEach(p => {
-                p.x += (p.targetX - p.x) * 0.1; p.y += (p.targetY - p.y) * 0.1;
-                pCtx.fillStyle = "#42c8f5";
-                pCtx.beginPath(); pCtx.arc(p.x, p.y, p.size, 0, 7); pCtx.fill();
-            });
-        }
-        requestAnimationFrame(animateParticles);
+function updateTargets(pts) {
+    particles.forEach((p, i) => {
+        const t = pts[i % pts.length];
+        if(t) { p.tx = t.x; p.ty = t.y; }
+    });
+}
+
+function runFlow() {
+    if (countdownNum >= 1) {
+        updateTargets(getPoints(countdownNum.toString()));
+        countdownNum--;
+        setTimeout(runFlow, 1000);
+    } else {
+        updateTargets(getPoints("Happy Birthday to You"));
+        // Launch fireworks repeatedly
+        const fwLaunch = setInterval(launchFirework, 150);
+        setTimeout(() => {
+            clearInterval(fwLaunch);
+            updateTargets(getPoints("Mwe Sein"));
+            setTimeout(showBook, 1500);
+        }, 3000);
     }
+}
 
-    /**
-     * 5. PAGE FLIP LOGIC
-     */
-    function flipPage(element, z) {
-        document.getElementById('click-hint').style.display = 'none';
-        if (!element.classList.contains('flipped')) {
-            element.classList.add('flipped');
-            if (element.id === 'p1') document.getElementById('main-book').classList.add('flipped-active');
-            setTimeout(() => { element.style.zIndex = "0"; }, 700);
-        } else {
-            element.style.zIndex = z;
-            if (element.id === 'p1') document.getElementById('main-book').classList.remove('flipped-active');
-            setTimeout(() => { element.classList.remove('flipped'); }, 1);
-        }
+function showBook() {
+    particles.forEach(p => { p.ty = -pH; });
+    setTimeout(() => { hideParticles = true; }, 1500);
+    const bc = document.getElementById('book-container');
+    bc.style.display = 'block';
+    setTimeout(() => { bc.style.opacity = '1'; }, 100);
+}
+
+function flip(el, z) {
+    const book = document.getElementById('main-book');
+    document.getElementById('click-hint').style.display = 'none';
+    if (!el.classList.contains('flipped')) {
+        el.classList.add('flipped');
+        if(el.id === 'p1') book.classList.add('flipped-active');
+        setTimeout(() => { el.style.zIndex = "0"; }, 700);
+    } else {
+        el.style.zIndex = z;
+        if(el.id === 'p1') book.classList.remove('flipped-active');
+        setTimeout(() => { el.classList.remove('flipped'); }, 1);
     }
+}
 
-    /**
-     * 6. INITIALIZE
-     */
-    for (let i = 0; i < 4800; i++) {
-        textParticles.push({
-            x: Math.random() * window.innerWidth,
-            y: Math.random() * window.innerHeight,
-            targetX: window.innerWidth / 2,
-            targetY: window.innerHeight / 2,
-            size: Math.random() * 1.6 + 0.6
+function initParticles() {
+    for (let i = 0; i < 2000; i++) particles.push({ x: Math.random()*pW, y: Math.random()*pH, tx: pW/2, ty: pH/2, size: Math.random()*2 + 1 });
+    runFlow();
+}
+
+function animateParticles() {
+    if (!hideParticles) {
+        pCtx.clearRect(0, 0, pW, pH);
+        particles.forEach(p => {
+            p.x += (p.tx - p.x) * 0.08; p.y += (p.ty - p.y) * 0.08;
+            pCtx.fillStyle = BLUE_COLOR; pCtx.beginPath(); pCtx.arc(p.x, p.y, p.size, 0, Math.PI*2); pCtx.fill();
         });
     }
+    requestAnimationFrame(animateParticles);
+}
 
-    drawMatrix(); animateFireworks(); animateParticles(); playSequence();
+initParticles(); resizeM(); resizeFW(); resizeP();
+drawMatrix(); animateFW(); animateParticles();
 </script>
 </body>
 </html>
