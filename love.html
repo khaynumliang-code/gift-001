@@ -32,7 +32,6 @@
         .page {
             position: absolute; width: 100%; height: 100%; top: 0; left: 0;
             transform-origin: top; transform-style: preserve-3d;
-            /* 默认带有丝滑过渡 */
             transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: grab;
         }
@@ -230,7 +229,6 @@ function initBookEvents() {
             isDragging = true; 
             currentTargetPage = page;
             startY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-            // 按住时取消 CSS 动画，实现 1:1 跟随
             page.style.transition = 'none'; 
         };
 
@@ -241,7 +239,7 @@ function initBookEvents() {
             
             if (!page.classList.contains('flipped')) {
                 if (diff < 0) {
-                    let angle = Math.max(-165, diff * 0.7); // 0.7 为拉动灵敏度
+                    let angle = Math.max(-165, diff * 0.7);
                     page.style.transform = `rotateX(${-angle}deg)`;
                     if (angle < -85) page.style.zIndex = "0";
                     else page.style.zIndex = originalZ;
@@ -262,16 +260,35 @@ function initBookEvents() {
             const endY = e.type.includes('touch') ? (e.changedTouches ? e.changedTouches[0].clientY : startY) : e.clientY;
             const diff = endY - startY;
             
-            // 松手瞬间恢复 1.5s 慢动作吸附
             page.style.transition = 'transform 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
             
-            if (Math.abs(diff) > 50 || Math.abs(diff) < 5) {
-                if ((diff < -50 || Math.abs(diff) < 5) && !page.classList.contains('flipped')) {
+            // 设定翻页阈值：拉动位移必须超过 80 像素才触发翻页
+            const threshold = 80;
+
+            if (!page.classList.contains('flipped')) {
+                // 向上拉（diff为负）且位移够大才翻页
+                if (diff < -threshold) {
                     flipPage(page, originalZ, true);
-                } else if ((diff > 50 || Math.abs(diff) < 5) && page.classList.contains('flipped')) {
+                } else {
+                    // 否则弹回
+                    resetPage(page, originalZ);
+                }
+            } else {
+                // 已翻开状态，向下拉（diff为正）且位移够大才合上
+                if (diff > threshold) {
                     flipPage(page, originalZ, false);
-                } else { resetPage(page, originalZ); }
-            } else { resetPage(page, originalZ); }
+                } else {
+                    // 否则弹回翻开状态
+                    resetPage(page, originalZ);
+                }
+            }
+            
+            // 如果只是轻微点一下（位移小于 10 像素），则执行默认翻页切换
+            if (Math.abs(diff) < 10) {
+                const currentlyFlipped = page.classList.contains('flipped');
+                flipPage(page, originalZ, !currentlyFlipped);
+            }
+
             currentTargetPage = null;
         };
 
