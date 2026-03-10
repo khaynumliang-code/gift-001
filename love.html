@@ -63,11 +63,13 @@
             background-repeat: repeat;
         }
 
-        .page-inner img { 
-            /* 调整为完整居中显示 */
+        /* 核心修复：让图片和二维码不拦截鼠标事件 */
+        .page-inner img, .qr-container { 
             width: 90%; height: 90%; object-fit: contain; 
             border: 10px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.15); 
-            pointer-events: none; -webkit-user-drag: none;
+            pointer-events: none; 
+            user-select: none;
+            -webkit-user-drag: none;
         }
         
         .back { transform: rotateX(-180deg); }
@@ -135,6 +137,7 @@
 </div>
 
 <script>
+// --- 原有的烟花和粒子逻辑保持不变 ---
 const fwCanvas = document.getElementById('fwCanvas');
 const fwCtx = fwCanvas.getContext('2d');
 const pCanvas = document.getElementById('particleCanvas');
@@ -225,14 +228,13 @@ function runFlow() {
     }
 }
 
+// --- 翻书逻辑核心修复 ---
 function initBookEvents() {
     const pages = document.querySelectorAll('.page');
     let isDragging = false, startY = 0, currentTargetPage = null;
 
     pages.forEach(page => {
-        // 根据新的页面数量（4张卡片）重设 zIndex 层级
         const originalZ = parseInt(window.getComputedStyle(page).zIndex); 
-        page.querySelectorAll('img').forEach(img => { img.ondragstart = () => false; });
 
         const startHandler = (e) => {
             isDragging = true; 
@@ -250,7 +252,6 @@ function initBookEvents() {
                 if (diff < 0) {
                     let angle = Math.max(-165, diff * 0.7);
                     page.style.transform = `rotateX(${-angle}deg)`;
-                    // 阈值设为 90deg（垂直状态）进行层级切换
                     if (angle < -90) page.style.zIndex = "0";
                     else page.style.zIndex = originalZ;
                 }
@@ -272,7 +273,7 @@ function initBookEvents() {
             
             page.style.transition = 'transform 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
             
-            const threshold = 100;
+            const threshold = 100; // 拖动超过100px才翻页
 
             if (!page.classList.contains('flipped')) {
                 if (diff < -threshold) {
@@ -288,6 +289,7 @@ function initBookEvents() {
                 }
             }
             
+            // 点击切换逻辑
             if (Math.abs(diff) < 10) {
                 const currentlyFlipped = page.classList.contains('flipped');
                 flipPage(page, originalZ, !currentlyFlipped);
@@ -319,7 +321,6 @@ function flipPage(el, originalZ, shouldFlip) {
         el.classList.add('flipped');
         el.style.transform = 'rotateX(165deg)';
         if(el.id === 'p1') book.classList.add('flipped-active');
-        // 调整层级切换时间，在动画进行到一半（约0.75s）时将层级降到底部
         setTimeout(() => { if(el.classList.contains('flipped')) el.style.zIndex = "0"; }, 750);
     } else {
         el.style.zIndex = originalZ;
@@ -351,4 +352,3 @@ resize(); initParticles(); animateFW(); animateParticles();
 </script>
 </body>
 </html>
-
