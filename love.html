@@ -5,60 +5,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Mwe Sein - Birthday Gallery</title>
     <style>
-        /* 基础样式：彻底禁止 body 的滚动和默认手势 */
-        body { 
-            margin: 0; overflow: hidden; background-color: #000; 
-            font-family: system-ui, -apple-system, sans-serif; 
-            -webkit-user-select: none; user-select: none; 
-            touch-action: none; position: fixed; width: 100%; height: 100%;
+        /* 彻底锁定 body，防止 iOS 橡皮筋回弹 */
+        html, body { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            overflow: hidden; background-color: #000; 
+            position: fixed; /* 核心：防止页面整体滚动 */
+            -webkit-user-select: none; user-select: none;
         }
-        
+
         canvas { display: block; position: absolute; top: 0; left: 0; }
         #fwCanvas { z-index: 50; pointer-events: none; }
         #particleCanvas { z-index: 100; pointer-events: none; }
 
         #gallery-container {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             display: none; opacity: 0; z-index: 200;
             transition: opacity 0.8s ease-in-out;
             background: #000;
+            touch-action: none; /* 显式禁用浏览器默认手势 */
         }
 
-        /* 重点：优化 slider 兼容性 */
         .slider { 
-            display: flex; width: 100%; height: 100%; will-change: transform; 
-            touch-action: none;
-            -webkit-overflow-scrolling: auto; /* 禁用 iOS 默认滚动 */
+            display: flex; width: 100%; height: 100%; 
+            will-change: transform; 
+            -webkit-backface-visibility: hidden; /* 开启硬件加速 */
         }
         
         .slide { 
-            min-width: 100%; height: 100%; display: flex; align-items: center; 
-            justify-content: center; position: relative; overflow: hidden;
+            min-width: 100%; height: 100%; display: flex; 
+            align-items: center; justify-content: center; 
         }
         
         .slide img { 
-            max-width: 90%; max-height: 75%; object-fit: contain; 
-            border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); 
-            pointer-events: none; /* 防止长按弹出菜单 */
-            -webkit-user-drag: none; 
-            -webkit-touch-callout: none; /* 彻底禁止 iOS 弹出菜单 */
+            max-width: 90%; max-height: 70%; object-fit: contain; 
+            border-radius: 12px; pointer-events: none; 
+            -webkit-user-drag: none;
+            -webkit-touch-callout: none;
         }
 
         .info-overlay {
-            position: absolute; bottom: 15%; left: 10%; right: 10%; color: white;
-            text-shadow: 0 2px 15px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.8);
-            pointer-events: none; z-index: 220;
+            position: absolute; bottom: 18%; width: 100%; text-align: center; color: white;
+            text-shadow: 0 2px 10px rgba(0,0,0,1); pointer-events: none;
         }
-        .info-overlay h3 { margin: 0; font-size: clamp(28px, 9vw, 42px); color: #42c8f5; font-weight: 900; }
+        .info-overlay h3 { margin: 0; font-size: 32px; color: #42c8f5; }
 
-        .dots { position: absolute; bottom: 40px; width: 100%; display: flex; justify-content: center; gap: 12px; }
-        .dot { width: 8px; height: 8px; background: rgba(255,255,255,0.3); border-radius: 50%; transition: 0.3s; }
-        .dot.active { background: #42c8f5; transform: scale(1.5); }
+        .dots { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: center; gap: 10px; }
+        .dot { width: 7px; height: 7px; background: rgba(255,255,255,0.3); border-radius: 50%; }
+        .dot.active { background: #42c8f5; transform: scale(1.4); }
 
         #hint {
-            position: absolute; top: 60px; width: 100%; text-align: center;
-            color: rgba(255,255,255,0.8); font-size: 14px; letter-spacing: 4px;
-            z-index: 210;
+            position: absolute; top: 10%; width: 100%; text-align: center;
+            color: rgba(255,255,255,0.6); font-size: 13px; letter-spacing: 2px;
         }
     </style>
 </head>
@@ -70,18 +67,18 @@
 <div id="gallery-container">
     <div id="hint">✦ 左右滑动查看照片 ✦</div>
     <div class="slider" id="main-slider">
-        <div class="slide"><img src="mwe1.jpg" alt="1"><div class="info-overlay"><h3>Mwe Sein</h3></div></div>
-        <div class="slide"><img src="mwe2.jpg" alt="2"></div>
-        <div class="slide"><img src="mwe3.jpg" alt="3"></div>
-        <div class="slide"><img src="mwe4.jpg" alt="4"></div>
-        <div class="slide"><img src="mwe5.jpg" alt="5"></div>
-        <div class="slide"><img src="mwe6.jpg" alt="6"><div class="info-overlay"><h3>Happy Birthday!</h3></div></div>
+        <div class="slide"><img src="mwe1.jpg"><div class="info-overlay"><h3>Mwe Sein</h3></div></div>
+        <div class="slide"><img src="mwe2.jpg"></div>
+        <div class="slide"><img src="mwe3.jpg"></div>
+        <div class="slide"><img src="mwe4.jpg"></div>
+        <div class="slide"><img src="mwe5.jpg"></div>
+        <div class="slide"><img src="mwe6.jpg"><div class="info-overlay"><h3>Happy Birthday!</h3></div></div>
     </div>
     <div class="dots" id="dot-container"></div>
 </div>
 
 <script>
-// --- 原有的烟花和粒子逻辑保持不变 ---
+// --- 原有动画逻辑 (烟花/粒子) ---
 const fwCanvas = document.getElementById('fwCanvas');
 const fwCtx = fwCanvas.getContext('2d');
 const pCanvas = document.getElementById('particleCanvas');
@@ -100,7 +97,7 @@ class FireworkParticle {
     constructor(x, y, color) {
         this.x = x; this.y = y; this.color = color;
         this.velocity = { x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 8 };
-        this.alpha = 1; this.decay = Math.random() * 0.015 + 0.015;
+        this.alpha = 1; this.decay = Math.random() * 0.02 + 0.01;
     }
     draw() {
         fwCtx.save(); fwCtx.globalAlpha = this.alpha; fwCtx.beginPath();
@@ -170,8 +167,10 @@ function runFlow() {
                         hideParticles = true; 
                         const container = document.getElementById('gallery-container');
                         container.style.display = 'block'; 
-                        setTimeout(() => container.style.opacity = '1', 50); 
-                        initGallery(); 
+                        setTimeout(() => {
+                            container.style.opacity = '1';
+                            initGallery();
+                        }, 50); 
                     }, 800);
                 }, 2200);
             }, 2000);
@@ -179,13 +178,14 @@ function runFlow() {
     }
 }
 
-// --- 针对 iOS 优化后的滑动逻辑 ---
+// --- 终极 iOS 兼容滑动逻辑 ---
 function initGallery() {
     const slider = document.getElementById('main-slider');
     const slides = document.querySelectorAll('.slide');
     const dotContainer = document.getElementById('dot-container');
     let currentIndex = 0, isDragging = false, startX = 0, currentTranslate = 0, prevTranslate = 0;
 
+    // 初始化点点
     dotContainer.innerHTML = '';
     slides.forEach((_, i) => {
         const d = document.createElement('div');
@@ -193,69 +193,69 @@ function initGallery() {
         dotContainer.appendChild(d);
     });
 
-    function setSliderPosition() {
-        slider.style.transform = `translateX(${currentTranslate}px)`;
+    function updateDots() {
+        document.querySelectorAll('.dot').forEach((dot, i) => {
+            dot.classList.toggle('active', i === currentIndex);
+        });
     }
 
-    function setPositionByIndex() {
-        currentTranslate = currentIndex * -window.innerWidth;
-        prevTranslate = currentTranslate;
-        slider.style.transition = 'transform 0.3s ease-out';
-        setSliderPosition();
-        document.querySelectorAll('.dot').forEach((dot, i) => dot.classList.toggle('active', i === currentIndex));
-    }
+    // 使用统一的移动函数
+    const moveSlider = (x) => {
+        slider.style.transform = `translateX(${x}px)`;
+    };
 
-    // 核心改进：使用 explicit 捕获坐标
-    function onStart(e) {
+    // 触摸开始
+    slider.addEventListener('touchstart', (e) => {
         isDragging = true;
-        startX = e.type.includes('touch') ? e.touches[0].clientX : e.pageX;
+        startX = e.changedTouches[0].clientX; // iOS 推荐用 changedTouches
         slider.style.transition = 'none';
         prevTranslate = currentIndex * -window.innerWidth;
-    }
+    }, { passive: false });
 
-    function onMove(e) {
+    // 触摸移动
+    slider.addEventListener('touchmove', (e) => {
         if (!isDragging) return;
+        if (e.cancelable) e.preventDefault(); // 强力阻止 iOS 橡皮筋
         
-        // 关键：阻止 iOS 的默认回弹或翻页手势
-        if (e.cancelable) e.preventDefault(); 
-        
-        const currentX = e.type.includes('touch') ? e.touches[0].clientX : e.pageX;
-        const diff = currentX - startX;
-        currentTranslate = prevTranslate + diff;
-        setSliderPosition();
-    }
+        const currentX = e.changedTouches[0].clientX;
+        currentTranslate = prevTranslate + (currentX - startX);
+        moveSlider(currentTranslate);
+    }, { passive: false });
 
-    function onEnd() {
+    // 触摸结束
+    slider.addEventListener('touchend', (e) => {
         if (!isDragging) return;
         isDragging = false;
         
-        const movedBy = currentTranslate - prevTranslate;
-        // 门槛设小一点，增加灵敏度
-        const threshold = 50; 
+        const endX = e.changedTouches[0].clientX;
+        const diff = endX - startX;
+
+        // 判定翻页（滑动超过 15% 屏幕宽度即翻页）
+        const threshold = window.innerWidth * 0.15;
         
-        if (movedBy < -threshold && currentIndex < slides.length - 1) {
+        if (diff < -threshold && currentIndex < slides.length - 1) {
             currentIndex++;
-        } else if (movedBy > threshold && currentIndex > 0) {
+        } else if (diff > threshold && currentIndex > 0) {
             currentIndex--;
         }
-        
-        setPositionByIndex();
-    }
 
-    // 绑定事件：显式禁用 passive 才能生效 preventDefault
-    slider.addEventListener('touchstart', onStart, { passive: false });
-    slider.addEventListener('touchmove', onMove, { passive: false });
-    slider.addEventListener('touchend', onEnd);
-    
-    // 鼠标兼容
-    slider.addEventListener('mousedown', onStart);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onEnd);
+        slider.style.transition = 'transform 0.4s ease-out';
+        currentTranslate = currentIndex * -window.innerWidth;
+        moveSlider(currentTranslate);
+        updateDots();
+    });
+
+    // 监听窗口大小变化
+    window.addEventListener('resize', () => {
+        currentTranslate = currentIndex * -window.innerWidth;
+        slider.style.transition = 'none';
+        moveSlider(currentTranslate);
+    });
 }
 
 function initParticles() {
-    for (let i = 0; i < 3500; i++) {
-        particles.push({ x: Math.random()*fwW, y: Math.random()*fwH, tx: fwW/2, ty: fwH/2, size: Math.random()*2.5 + 1 });
+    for (let i = 0; i < 3000; i++) {
+        particles.push({ x: Math.random()*fwW, y: Math.random()*fwH, tx: fwW/2, ty: fwH/2, size: Math.random()*2 + 1 });
     }
     runFlow();
 }
@@ -265,7 +265,7 @@ function animateParticles() {
         pCtx.clearRect(0, 0, fwW, fwH);
         pCtx.fillStyle = BLUE_COLOR;
         particles.forEach(p => {
-            p.x += (p.tx - p.x) * 0.1; p.y += (p.ty - p.y) * 0.1;
+            p.x += (p.tx - p.x) * 0.08; p.y += (p.ty - p.y) * 0.08;
             pCtx.beginPath(); pCtx.arc(p.x, p.y, p.size, 0, Math.PI*2); pCtx.fill();
         });
     }
