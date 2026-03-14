@@ -17,9 +17,17 @@
             background: #000;
         }
 
-        .slider { display: flex; width: 100%; height: 100%; will-change: transform; }
+        .slider { 
+            display: flex; width: 100%; height: 100%; will-change: transform; 
+            touch-action: none; /* 关键：禁止 iOS 系统手势 */
+        }
         .slide { min-width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; }
-        .slide img { max-width: 90%; max-height: 75%; object-fit: contain; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); pointer-events: none; }
+        .slide img { 
+            max-width: 90%; max-height: 75%; object-fit: contain; 
+            border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); 
+            pointer-events: none; 
+            -webkit-user-drag: none; /* 关键：禁止 iOS 拖拽图片 */
+        }
 
         .info-overlay {
             position: absolute; bottom: 15%; left: 10%; right: 10%; color: white;
@@ -102,33 +110,18 @@ function getPoints(text) {
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
     tempCanvas.width = fwW; tempCanvas.height = fwH;
-    
-    let fontSize;
-    if (text.length === 1 && !isNaN(text)) {
-        fontSize = Math.min(fwW * 0.8, 500); 
-    } else {
-        fontSize = Math.min(fwW / 6, 120); 
-    }
-    
+    let fontSize = (text.length === 1 && !isNaN(text)) ? Math.min(fwW * 0.8, 500) : Math.min(fwW / 6, 120); 
     tempCtx.font = `900 ${fontSize}px system-ui, sans-serif`;
-    tempCtx.textAlign = "center"; 
-    tempCtx.textBaseline = "middle";
+    tempCtx.textAlign = "center"; tempCtx.textBaseline = "middle";
     tempCtx.fillStyle = "white";
-
     const lines = text.split('\n');
     const lineHeight = fontSize * 1.1;
-    const totalHeight = lines.length * lineHeight;
-    const startY = (fwH - totalHeight) / 2 + lineHeight / 2;
-
-    lines.forEach((line, index) => {
-        tempCtx.fillText(line, fwW / 2, startY + index * lineHeight);
-    });
-    
+    const startY = (fwH - (lines.length * lineHeight)) / 2 + lineHeight / 2;
+    lines.forEach((line, index) => { tempCtx.fillText(line, fwW / 2, startY + index * lineHeight); });
     const data = tempCtx.getImageData(0, 0, fwW, fwH).data;
     const pts = [];
-    const step = 4; 
-    for (let y = 0; y < fwH; y += step) {
-        for (let x = 0; x < fwW; x += step) {
+    for (let y = 0; y < fwH; y += 4) {
+        for (let x = 0; x < fwW; x += 4) {
             if (data[(y * fwW + x) * 4 + 3] > 128) pts.push({x, y});
         }
     }
@@ -170,7 +163,6 @@ function runFlow() {
     }
 }
 
-/* --- 优化后的灵敏滑动逻辑 --- */
 function initGallery() {
     const slider = document.getElementById('main-slider');
     const slides = document.querySelectorAll('.slide');
@@ -188,7 +180,7 @@ function initGallery() {
     function setPositionByIndex() {
         currentTranslate = currentIndex * -window.innerWidth;
         prevTranslate = currentTranslate;
-        slider.style.transition = 'transform 0.5s cubic-bezier(0.15, 0.3, 0.25, 1)'; // 缩短过渡时间，更跟手
+        slider.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
         setSliderPosition();
         document.querySelectorAll('.dot').forEach((dot, i) => dot.classList.toggle('active', i === currentIndex));
     }
@@ -199,27 +191,29 @@ function initGallery() {
         slider.style.transition = 'none';
         prevTranslate = currentIndex * -window.innerWidth;
     }
+
     function onMove(e) {
         if (!isDragging) return;
+        // 关键：阻止 iOS 默认滚动行为
+        if (e.cancelable) e.preventDefault();
         const currentX = e.type.includes('mouse') ? e.pageX : e.touches[0].clientX;
         currentTranslate = prevTranslate + (currentX - startX);
         setSliderPosition();
     }
+
     function onEnd() {
         if (!isDragging) return;
         isDragging = false;
         const movedBy = currentTranslate - prevTranslate;
-
-        // 核心修改：大幅降低翻页门槛（从 100 降到 30 像素）
-        const threshold = 30; 
+        const threshold = 40; 
         if (movedBy < -threshold && currentIndex < slides.length - 1) currentIndex++;
         else if (movedBy > threshold && currentIndex > 0) currentIndex--;
-
         setPositionByIndex();
     }
 
-    slider.addEventListener('touchstart', onStart, { passive: true });
-    slider.addEventListener('touchmove', onMove, { passive: true });
+    // 关键：将 passive 设置为 false 允许 preventDefault
+    slider.addEventListener('touchstart', onStart, { passive: false });
+    slider.addEventListener('touchmove', onMove, { passive: false });
     slider.addEventListener('touchend', onEnd);
     slider.addEventListener('mousedown', onStart);
     window.addEventListener('mousemove', onMove);
