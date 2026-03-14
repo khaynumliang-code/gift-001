@@ -2,10 +2,17 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Mwe Sein - Birthday Gallery</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: system-ui, -apple-system, sans-serif; -webkit-user-select: none; user-select: none; touch-action: none; }
+        /* 基础样式：彻底禁止 body 的滚动和默认手势 */
+        body { 
+            margin: 0; overflow: hidden; background-color: #000; 
+            font-family: system-ui, -apple-system, sans-serif; 
+            -webkit-user-select: none; user-select: none; 
+            touch-action: none; position: fixed; width: 100%; height: 100%;
+        }
+        
         canvas { display: block; position: absolute; top: 0; left: 0; }
         #fwCanvas { z-index: 50; pointer-events: none; }
         #particleCanvas { z-index: 100; pointer-events: none; }
@@ -17,16 +24,24 @@
             background: #000;
         }
 
+        /* 重点：优化 slider 兼容性 */
         .slider { 
             display: flex; width: 100%; height: 100%; will-change: transform; 
-            touch-action: none; /* 关键：禁止 iOS 系统手势 */
+            touch-action: none;
+            -webkit-overflow-scrolling: auto; /* 禁用 iOS 默认滚动 */
         }
-        .slide { min-width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; }
+        
+        .slide { 
+            min-width: 100%; height: 100%; display: flex; align-items: center; 
+            justify-content: center; position: relative; overflow: hidden;
+        }
+        
         .slide img { 
             max-width: 90%; max-height: 75%; object-fit: contain; 
             border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); 
-            pointer-events: none; 
-            -webkit-user-drag: none; /* 关键：禁止 iOS 拖拽图片 */
+            pointer-events: none; /* 防止长按弹出菜单 */
+            -webkit-user-drag: none; 
+            -webkit-touch-callout: none; /* 彻底禁止 iOS 弹出菜单 */
         }
 
         .info-overlay {
@@ -34,16 +49,16 @@
             text-shadow: 0 2px 15px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.8);
             pointer-events: none; z-index: 220;
         }
-        .info-overlay h3 { margin: 0; font-size: clamp(28px, 9vw, 42px); color: #42c8f5; font-weight: 900; letter-spacing: 1px; }
+        .info-overlay h3 { margin: 0; font-size: clamp(28px, 9vw, 42px); color: #42c8f5; font-weight: 900; }
 
         .dots { position: absolute; bottom: 40px; width: 100%; display: flex; justify-content: center; gap: 12px; }
         .dot { width: 8px; height: 8px; background: rgba(255,255,255,0.3); border-radius: 50%; transition: 0.3s; }
         .dot.active { background: #42c8f5; transform: scale(1.5); }
 
         #hint {
-            position: absolute; top: 50px; width: 100%; text-align: center;
+            position: absolute; top: 60px; width: 100%; text-align: center;
             color: rgba(255,255,255,0.8); font-size: 14px; letter-spacing: 4px;
-            z-index: 210; text-shadow: 0 2px 5px rgba(0,0,0,0.8);
+            z-index: 210;
         }
     </style>
 </head>
@@ -66,6 +81,7 @@
 </div>
 
 <script>
+// --- 原有的烟花和粒子逻辑保持不变 ---
 const fwCanvas = document.getElementById('fwCanvas');
 const fwCtx = fwCanvas.getContext('2d');
 const pCanvas = document.getElementById('particleCanvas');
@@ -163,6 +179,7 @@ function runFlow() {
     }
 }
 
+// --- 针对 iOS 优化后的滑动逻辑 ---
 function initGallery() {
     const slider = document.getElementById('main-slider');
     const slides = document.querySelectorAll('.slide');
@@ -176,45 +193,61 @@ function initGallery() {
         dotContainer.appendChild(d);
     });
 
-    function setSliderPosition() { slider.style.transform = `translateX(${currentTranslate}px)`; }
+    function setSliderPosition() {
+        slider.style.transform = `translateX(${currentTranslate}px)`;
+    }
+
     function setPositionByIndex() {
         currentTranslate = currentIndex * -window.innerWidth;
         prevTranslate = currentTranslate;
-        slider.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        slider.style.transition = 'transform 0.3s ease-out';
         setSliderPosition();
         document.querySelectorAll('.dot').forEach((dot, i) => dot.classList.toggle('active', i === currentIndex));
     }
 
+    // 核心改进：使用 explicit 捕获坐标
     function onStart(e) {
         isDragging = true;
-        startX = e.type.includes('mouse') ? e.pageX : e.touches[0].clientX;
+        startX = e.type.includes('touch') ? e.touches[0].clientX : e.pageX;
         slider.style.transition = 'none';
         prevTranslate = currentIndex * -window.innerWidth;
     }
 
     function onMove(e) {
         if (!isDragging) return;
-        // 关键：阻止 iOS 默认滚动行为
-        if (e.cancelable) e.preventDefault();
-        const currentX = e.type.includes('mouse') ? e.pageX : e.touches[0].clientX;
-        currentTranslate = prevTranslate + (currentX - startX);
+        
+        // 关键：阻止 iOS 的默认回弹或翻页手势
+        if (e.cancelable) e.preventDefault(); 
+        
+        const currentX = e.type.includes('touch') ? e.touches[0].clientX : e.pageX;
+        const diff = currentX - startX;
+        currentTranslate = prevTranslate + diff;
         setSliderPosition();
     }
 
     function onEnd() {
         if (!isDragging) return;
         isDragging = false;
+        
         const movedBy = currentTranslate - prevTranslate;
-        const threshold = 40; 
-        if (movedBy < -threshold && currentIndex < slides.length - 1) currentIndex++;
-        else if (movedBy > threshold && currentIndex > 0) currentIndex--;
+        // 门槛设小一点，增加灵敏度
+        const threshold = 50; 
+        
+        if (movedBy < -threshold && currentIndex < slides.length - 1) {
+            currentIndex++;
+        } else if (movedBy > threshold && currentIndex > 0) {
+            currentIndex--;
+        }
+        
         setPositionByIndex();
     }
 
-    // 关键：将 passive 设置为 false 允许 preventDefault
+    // 绑定事件：显式禁用 passive 才能生效 preventDefault
     slider.addEventListener('touchstart', onStart, { passive: false });
     slider.addEventListener('touchmove', onMove, { passive: false });
     slider.addEventListener('touchend', onEnd);
+    
+    // 鼠标兼容
     slider.addEventListener('mousedown', onStart);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onEnd);
