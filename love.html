@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Mwe Sein - Birthday Gallery</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: system-ui, -apple-system, sans-serif; -webkit-user-select: none; user-select: none; touch-action: none; }
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: system-ui, -apple-system, sans-serif; -webkit-user-select: none; user-select: none; touch-action: none; position: fixed; width: 100%; height: 100%; }
         canvas { display: block; position: absolute; top: 0; left: 0; }
         #fwCanvas { z-index: 50; pointer-events: none; }
         #particleCanvas { z-index: 100; pointer-events: none; }
@@ -19,32 +19,40 @@
 
         .slider { 
             display: flex; width: 100%; height: 100%; will-change: transform; 
-            touch-action: none; /* 关键：禁止系统手势干扰 */
+            touch-action: none; 
+            transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
         }
-        .slide { min-width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; }
+        
+        .slide { 
+            min-width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; 
+        }
+
+        /* 关键修复：给图片盖一个透明层，防止手指直接点到图片触发 iOS 系统菜单 */
+        .slide::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
+        }
+
         .slide img { 
             max-width: 90%; max-height: 75%; object-fit: contain; 
             border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); 
-            pointer-events: none; 
-            -webkit-user-drag: none; /* 关键：防止 iOS 拖拽图片 */
-            -webkit-touch-callout: none; /* 防止长按弹出菜单 */
+            pointer-events: none; -webkit-user-drag: none;
         }
 
         .info-overlay {
             position: absolute; bottom: 15%; left: 10%; right: 10%; color: white;
-            text-shadow: 0 2px 15px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.8);
+            text-shadow: 0 2px 15px rgba(0,0,0,1);
             pointer-events: none; z-index: 220;
         }
-        .info-overlay h3 { margin: 0; font-size: clamp(28px, 9vw, 42px); color: #42c8f5; font-weight: 900; letter-spacing: 1px; }
+        .info-overlay h3 { margin: 0; font-size: 32px; color: #42c8f5; font-weight: 900; }
 
-        .dots { position: absolute; bottom: 40px; width: 100%; display: flex; justify-content: center; gap: 12px; }
+        .dots { position: absolute; bottom: 40px; width: 100%; display: flex; justify-content: center; gap: 12px; z-index: 230; }
         .dot { width: 8px; height: 8px; background: rgba(255,255,255,0.3); border-radius: 50%; transition: 0.3s; }
         .dot.active { background: #42c8f5; transform: scale(1.5); }
 
         #hint {
             position: absolute; top: 50px; width: 100%; text-align: center;
             color: rgba(255,255,255,0.8); font-size: 14px; letter-spacing: 4px;
-            z-index: 210; text-shadow: 0 2px 5px rgba(0,0,0,0.8);
+            z-index: 210;
         }
     </style>
 </head>
@@ -56,18 +64,18 @@
 <div id="gallery-container">
     <div id="hint">✦ 左右滑动查看照片 ✦</div>
     <div class="slider" id="main-slider">
-        <div class="slide"><img src="mwe1.jpg" alt="1"><div class="info-overlay"><h3>Mwe Sein</h3></div></div>
-        <div class="slide"><img src="mwe2.jpg" alt="2"></div>
-        <div class="slide"><img src="mwe3.jpg" alt="3"></div>
-        <div class="slide"><img src="mwe4.jpg" alt="4"></div>
-        <div class="slide"><img src="mwe5.jpg" alt="5"></div>
-        <div class="slide"><img src="mwe6.jpg" alt="6"><div class="info-overlay"><h3>Happy Birthday!</h3></div></div>
+        <div class="slide"><img src="mwe1.jpg"><div class="info-overlay"><h3>Mwe Sein</h3></div></div>
+        <div class="slide"><img src="mwe2.jpg"></div>
+        <div class="slide"><img src="mwe3.jpg"></div>
+        <div class="slide"><img src="mwe4.jpg"></div>
+        <div class="slide"><img src="mwe5.jpg"></div>
+        <div class="slide"><img src="mwe6.jpg"><div class="info-overlay"><h3>Happy Birthday!</h3></div></div>
     </div>
     <div class="dots" id="dot-container"></div>
 </div>
 
 <script>
-// --- 这里保留你原来的烟花和粒子所有代码 ---
+// --- 这里是你原有的烟花和粒子代码，完全没动 ---
 const fwCanvas = document.getElementById('fwCanvas');
 const fwCtx = fwCanvas.getContext('2d');
 const pCanvas = document.getElementById('particleCanvas');
@@ -166,69 +174,56 @@ function runFlow() {
     }
 }
 
-// --- 仅修复滑动逻辑，其余代码结构不改动 ---
+// --- 核心修复后的滑动函数 ---
 function initGallery() {
     const slider = document.getElementById('main-slider');
     const slides = document.querySelectorAll('.slide');
     const dotContainer = document.getElementById('dot-container');
-    let currentIndex = 0, isDragging = false, startX = 0, currentTranslate = 0, prevTranslate = 0;
+    let currentIndex = 0, isDragging = false, startX = 0, currentMove = 0;
 
     dotContainer.innerHTML = '';
     slides.forEach((_, i) => {
         const d = document.createElement('div');
-        d.className = i === 0 ? 'dot active' : 'dot';
+        d.className = (i === 0) ? 'dot active' : 'dot';
         dotContainer.appendChild(d);
     });
 
-    const setSliderPosition = () => {
-        slider.style.transform = `translateX(${currentTranslate}px)`;
+    // 统一更新函数：使用百分比移动，iOS 最稳
+    const updatePos = (movePx = 0) => {
+        const percent = (currentIndex * -100) + (movePx / window.innerWidth * 100);
+        slider.style.transform = `translateX(${percent}%)`;
     };
 
-    // 修复：触摸开始
     slider.addEventListener('touchstart', (e) => {
         isDragging = true;
         startX = e.touches[0].clientX;
         slider.style.transition = 'none';
-        prevTranslate = currentIndex * -window.innerWidth;
     }, { passive: false });
 
-    // 修复：触摸移动
     slider.addEventListener('touchmove', (e) => {
         if (!isDragging) return;
-        
-        // 关键：阻止 iOS 默认翻页，确保只触发我们的滑动
-        if (e.cancelable) e.preventDefault();
-        
-        const currentX = e.touches[0].clientX;
-        currentTranslate = prevTranslate + (currentX - startX);
-        setSliderPosition();
+        if (e.cancelable) e.preventDefault(); // 强力阻止苹果浏览器拦截
+        currentMove = e.touches[0].clientX - startX;
+        updatePos(currentMove);
     }, { passive: false });
 
-    // 修复：触摸结束
-    slider.addEventListener('touchend', () => {
+    slider.addEventListener('touchend', (e) => {
         if (!isDragging) return;
         isDragging = false;
         
-        const movedBy = currentTranslate - prevTranslate;
-        const threshold = 50; 
-
-        if (movedBy < -threshold && currentIndex < slides.length - 1) currentIndex++;
-        else if (movedBy > threshold && currentIndex > 0) currentIndex--;
-
-        slider.style.transition = 'transform 0.4s ease-out';
-        currentTranslate = currentIndex * -window.innerWidth;
-        setSliderPosition();
+        slider.style.transition = 'transform 0.4s cubic-bezier(0.23, 1, 0.32, 1)';
         
+        // 判定翻页：滑动超过 50px 
+        if (currentMove < -50 && currentIndex < slides.length - 1) currentIndex++;
+        else if (currentMove > 50 && currentIndex > 0) currentIndex--;
+
+        currentMove = 0;
+        updatePos(0);
+        
+        // 更新点点
         document.querySelectorAll('.dot').forEach((dot, i) => {
             dot.classList.toggle('active', i === currentIndex);
         });
-    });
-
-    // 窗口调整适配
-    window.addEventListener('resize', () => {
-        currentTranslate = currentIndex * -window.innerWidth;
-        slider.style.transition = 'none';
-        setSliderPosition();
     });
 }
 
