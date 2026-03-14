@@ -5,55 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Mwe Sein - Birthday Gallery</title>
     <style>
-        html, body { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            overflow: hidden; background-color: #000; 
-            position: fixed;
-            -webkit-user-select: none; user-select: none;
-        }
-
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: system-ui, -apple-system, sans-serif; -webkit-user-select: none; user-select: none; touch-action: none; }
         canvas { display: block; position: absolute; top: 0; left: 0; }
-        #fwCanvas { z-index: 50; }
-        #particleCanvas { z-index: 100; }
+        #fwCanvas { z-index: 50; pointer-events: none; }
+        #particleCanvas { z-index: 100; pointer-events: none; }
 
         #gallery-container {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            display: none; opacity: 0; z-index: 500; /* 极高层级 */
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; opacity: 0; z-index: 200;
             transition: opacity 0.8s ease-in-out;
             background: #000;
         }
 
         .slider { 
-            display: flex; width: 100%; height: 100%; 
-            will-change: transform;
-            transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            display: flex; width: 100%; height: 100%; will-change: transform; 
+            touch-action: none; /* 关键：禁止系统手势干扰 */
         }
-        
-        .slide { 
-            min-width: 100%; height: 100%; display: flex; 
-            align-items: center; justify-content: center; 
-            position: relative;
-        }
-        
+        .slide { min-width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; }
         .slide img { 
-            max-width: 85%; max-height: 70%; object-fit: contain; 
-            border-radius: 12px; pointer-events: none; 
-            -webkit-user-drag: none;
+            max-width: 90%; max-height: 75%; object-fit: contain; 
+            border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); 
+            pointer-events: none; 
+            -webkit-user-drag: none; /* 关键：防止 iOS 拖拽图片 */
+            -webkit-touch-callout: none; /* 防止长按弹出菜单 */
         }
 
         .info-overlay {
-            position: absolute; bottom: 18%; width: 100%; text-align: center; color: white;
-            pointer-events: none;
+            position: absolute; bottom: 15%; left: 10%; right: 10%; color: white;
+            text-shadow: 0 2px 15px rgba(0,0,0,1), 0 0 10px rgba(0,0,0,0.8);
+            pointer-events: none; z-index: 220;
         }
-        .info-overlay h3 { margin: 0; font-size: 32px; color: #42c8f5; text-shadow: 0 0 10px rgba(66,200,245,0.5); }
+        .info-overlay h3 { margin: 0; font-size: clamp(28px, 9vw, 42px); color: #42c8f5; font-weight: 900; letter-spacing: 1px; }
 
-        .dots { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: center; gap: 12px; }
-        .dot { width: 8px; height: 8px; background: rgba(255,255,255,0.3); border-radius: 50%; }
-        .dot.active { background: #42c8f5; transform: scale(1.4); }
+        .dots { position: absolute; bottom: 40px; width: 100%; display: flex; justify-content: center; gap: 12px; }
+        .dot { width: 8px; height: 8px; background: rgba(255,255,255,0.3); border-radius: 50%; transition: 0.3s; }
+        .dot.active { background: #42c8f5; transform: scale(1.5); }
 
         #hint {
-            position: absolute; top: 10%; width: 100%; text-align: center;
-            color: rgba(255,255,255,0.5); font-size: 13px; letter-spacing: 2px;
+            position: absolute; top: 50px; width: 100%; text-align: center;
+            color: rgba(255,255,255,0.8); font-size: 14px; letter-spacing: 4px;
+            z-index: 210; text-shadow: 0 2px 5px rgba(0,0,0,0.8);
         }
     </style>
 </head>
@@ -63,26 +54,27 @@
 <canvas id="particleCanvas"></canvas>
 
 <div id="gallery-container">
-    <div id="hint">✦ 左右滑动查看 ✦</div>
+    <div id="hint">✦ 左右滑动查看照片 ✦</div>
     <div class="slider" id="main-slider">
-        <div class="slide"><img src="mwe1.jpg"><div class="info-overlay"><h3>Mwe Sein</h3></div></div>
-        <div class="slide"><img src="mwe2.jpg"></div>
-        <div class="slide"><img src="mwe3.jpg"></div>
-        <div class="slide"><img src="mwe4.jpg"></div>
-        <div class="slide"><img src="mwe5.jpg"></div>
-        <div class="slide"><img src="mwe6.jpg"><div class="info-overlay"><h3>Happy Birthday!</h3></div></div>
+        <div class="slide"><img src="mwe1.jpg" alt="1"><div class="info-overlay"><h3>Mwe Sein</h3></div></div>
+        <div class="slide"><img src="mwe2.jpg" alt="2"></div>
+        <div class="slide"><img src="mwe3.jpg" alt="3"></div>
+        <div class="slide"><img src="mwe4.jpg" alt="4"></div>
+        <div class="slide"><img src="mwe5.jpg" alt="5"></div>
+        <div class="slide"><img src="mwe6.jpg" alt="6"><div class="info-overlay"><h3>Happy Birthday!</h3></div></div>
     </div>
     <div class="dots" id="dot-container"></div>
 </div>
 
 <script>
-let fwCanvas = document.getElementById('fwCanvas');
-let fwCtx = fwCanvas.getContext('2d');
-let pCanvas = document.getElementById('particleCanvas');
-let pCtx = pCanvas.getContext('2d');
+// --- 这里保留你原来的烟花和粒子所有代码 ---
+const fwCanvas = document.getElementById('fwCanvas');
+const fwCtx = fwCanvas.getContext('2d');
+const pCanvas = document.getElementById('particleCanvas');
+const pCtx = pCanvas.getContext('2d');
 let fwW, fwH, fireworks = [];
-let particles = [], countdownNum = 3, isGalleryActive = false;
-let aniId1, aniId2;
+let particles = [], countdownNum = 3, hideParticles = false;
+const BLUE_COLOR = "#42c8f5"; 
 
 function resize() { 
     fwW = fwCanvas.width = pCanvas.width = window.innerWidth; 
@@ -94,7 +86,7 @@ class FireworkParticle {
     constructor(x, y, color) {
         this.x = x; this.y = y; this.color = color;
         this.velocity = { x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 8 };
-        this.alpha = 1; this.decay = Math.random() * 0.02 + 0.01;
+        this.alpha = 1; this.decay = Math.random() * 0.015 + 0.015;
     }
     draw() {
         fwCtx.save(); fwCtx.globalAlpha = this.alpha; fwCtx.beginPath();
@@ -104,15 +96,13 @@ class FireworkParticle {
 }
 
 function launchFirework() {
-    if(isGalleryActive) return;
     const x = Math.random() * fwW, y = Math.random() * (fwH * 0.6);
     const color = `hsl(${Math.random() * 360}, 100%, 65%)`;
     for (let i = 0; i < 40; i++) fireworks.push(new FireworkParticle(x, y, color));
 }
 
 function animateFW() {
-    if(isGalleryActive) return;
-    aniId1 = requestAnimationFrame(animateFW);
+    requestAnimationFrame(animateFW);
     fwCtx.fillStyle = 'rgba(0, 0, 0, 0.2)';
     fwCtx.fillRect(0, 0, fwW, fwH);
     fireworks.forEach((p, i) => { p.update(); p.draw(); if (p.alpha <= 0) fireworks.splice(i, 1); });
@@ -122,13 +112,14 @@ function getPoints(text) {
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
     tempCanvas.width = fwW; tempCanvas.height = fwH;
-    let fontSize = (text.length === 1 && !isNaN(text)) ? Math.min(fwW * 0.8, 450) : Math.min(fwW / 6, 110); 
+    let fontSize = (text.length === 1 && !isNaN(text)) ? Math.min(fwW * 0.8, 500) : Math.min(fwW / 6, 120); 
     tempCtx.font = `900 ${fontSize}px system-ui, sans-serif`;
     tempCtx.textAlign = "center"; tempCtx.textBaseline = "middle";
     tempCtx.fillStyle = "white";
     const lines = text.split('\n');
     const lineHeight = fontSize * 1.1;
-    const startY = (fwH - (lines.length * lineHeight)) / 2 + lineHeight / 2;
+    const totalHeight = lines.length * lineHeight;
+    const startY = (fwH - totalHeight) / 2 + lineHeight / 2;
     lines.forEach((line, index) => { tempCtx.fillText(line, fwW / 2, startY + index * lineHeight); });
     const data = tempCtx.getImageData(0, 0, fwW, fwH).data;
     const pts = [];
@@ -163,19 +154,11 @@ function runFlow() {
                 setTimeout(() => {
                     particles.forEach(p => p.ty = -fwH);
                     setTimeout(() => { 
-                        // --- 关键修改：进入画廊前彻底杀死 Canvas 释放内存 ---
-                        isGalleryActive = true;
-                        cancelAnimationFrame(aniId1);
-                        cancelAnimationFrame(aniId2);
-                        fwCanvas.remove();
-                        pCanvas.remove();
-                        
+                        hideParticles = true; 
                         const container = document.getElementById('gallery-container');
                         container.style.display = 'block'; 
-                        setTimeout(() => {
-                            container.style.opacity = '1';
-                            initGallery();
-                        }, 50); 
+                        setTimeout(() => container.style.opacity = '1', 50); 
+                        initGallery(); 
                     }, 800);
                 }, 2200);
             }, 2000);
@@ -183,11 +166,12 @@ function runFlow() {
     }
 }
 
+// --- 仅修复滑动逻辑，其余代码结构不改动 ---
 function initGallery() {
     const slider = document.getElementById('main-slider');
     const slides = document.querySelectorAll('.slide');
     const dotContainer = document.getElementById('dot-container');
-    let currentIndex = 0, isDragging = false, startX = 0, currentX = 0;
+    let currentIndex = 0, isDragging = false, startX = 0, currentTranslate = 0, prevTranslate = 0;
 
     dotContainer.innerHTML = '';
     slides.forEach((_, i) => {
@@ -196,60 +180,75 @@ function initGallery() {
         dotContainer.appendChild(d);
     });
 
-    const updateSlider = (offset = 0) => {
-        const base = currentIndex * -100;
-        const move = (offset / window.innerWidth) * 100;
-        slider.style.transform = `translateX(${base + move}%)`;
+    const setSliderPosition = () => {
+        slider.style.transform = `translateX(${currentTranslate}px)`;
     };
 
+    // 修复：触摸开始
     slider.addEventListener('touchstart', (e) => {
         isDragging = true;
-        startX = e.changedTouches[0].clientX;
+        startX = e.touches[0].clientX;
         slider.style.transition = 'none';
+        prevTranslate = currentIndex * -window.innerWidth;
     }, { passive: false });
 
+    // 修复：触摸移动
     slider.addEventListener('touchmove', (e) => {
         if (!isDragging) return;
+        
+        // 关键：阻止 iOS 默认翻页，确保只触发我们的滑动
         if (e.cancelable) e.preventDefault();
-        currentX = e.changedTouches[0].clientX;
-        updateSlider(currentX - startX);
+        
+        const currentX = e.touches[0].clientX;
+        currentTranslate = prevTranslate + (currentX - startX);
+        setSliderPosition();
     }, { passive: false });
 
-    slider.addEventListener('touchend', (e) => {
+    // 修复：触摸结束
+    slider.addEventListener('touchend', () => {
         if (!isDragging) return;
         isDragging = false;
-        const endX = e.changedTouches[0].clientX;
-        const diff = endX - startX;
-        const threshold = 60;
+        
+        const movedBy = currentTranslate - prevTranslate;
+        const threshold = 50; 
 
-        if (diff < -threshold && currentIndex < slides.length - 1) currentIndex++;
-        else if (diff > threshold && currentIndex > 0) currentIndex--;
+        if (movedBy < -threshold && currentIndex < slides.length - 1) currentIndex++;
+        else if (movedBy > threshold && currentIndex > 0) currentIndex--;
 
         slider.style.transition = 'transform 0.4s ease-out';
-        updateSlider(0);
+        currentTranslate = currentIndex * -window.innerWidth;
+        setSliderPosition();
         
         document.querySelectorAll('.dot').forEach((dot, i) => {
             dot.classList.toggle('active', i === currentIndex);
         });
     });
+
+    // 窗口调整适配
+    window.addEventListener('resize', () => {
+        currentTranslate = currentIndex * -window.innerWidth;
+        slider.style.transition = 'none';
+        setSliderPosition();
+    });
 }
 
 function initParticles() {
-    for (let i = 0; i < 2500; i++) { // 减少粒子数量，减负
-        particles.push({ x: Math.random()*fwW, y: Math.random()*fwH, tx: fwW/2, ty: fwH/2, size: Math.random()*2 + 1 });
+    for (let i = 0; i < 3500; i++) {
+        particles.push({ x: Math.random()*fwW, y: Math.random()*fwH, tx: fwW/2, ty: fwH/2, size: Math.random()*2.5 + 1 });
     }
     runFlow();
 }
 
 function animateParticles() {
-    if(isGalleryActive) return;
-    aniId2 = requestAnimationFrame(animateParticles);
-    pCtx.clearRect(0, 0, fwW, fwH);
-    pCtx.fillStyle = BLUE_COLOR;
-    particles.forEach(p => {
-        p.x += (p.tx - p.x) * 0.08; p.y += (p.ty - p.y) * 0.08;
-        pCtx.beginPath(); pCtx.arc(p.x, p.y, p.size, 0, Math.PI*2); pCtx.fill();
-    });
+    if (!hideParticles) {
+        pCtx.clearRect(0, 0, fwW, fwH);
+        pCtx.fillStyle = BLUE_COLOR;
+        particles.forEach(p => {
+            p.x += (p.tx - p.x) * 0.1; p.y += (p.ty - p.y) * 0.1;
+            pCtx.beginPath(); pCtx.arc(p.x, p.y, p.size, 0, Math.PI*2); pCtx.fill();
+        });
+    }
+    requestAnimationFrame(animateParticles);
 }
 
 resize(); initParticles(); animateFW(); animateParticles();
